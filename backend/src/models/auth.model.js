@@ -1,33 +1,41 @@
 import mongoose from "mongoose";
-import bcrypt from "bcrypt"
+import bcrypt from "bcrypt";
 
 const authSchema = new mongoose.Schema(
   {
-    name: {
-      type: String,
-      trim: true,
-      maxLength: 60,
-    },
     email: {
       type: String,
-      index: true,
       required: true,
-      lowercase: true,
       unique: true,
+      index: true,
+      lowercase: true,
       trim: true,
     },
+
     password: {
       type: String,
       trim: true,
     },
+
     googleId: {
       type: String,
       trim: true,
     },
+
     isVerified: {
       type: Boolean,
       default: false,
     },
+    emailVerificationToken: {
+      type: String,
+      default: null,
+    },
+
+    emailVerificationExpires: {
+      type: Date,
+      default: null,
+    },
+
     lastLoginAt: {
       type: Date,
     },
@@ -37,15 +45,26 @@ const authSchema = new mongoose.Schema(
   },
 );
 
-authSchema.pre("save", async function (next) {
-    if(!this.isModified("password"))return next();
+// Hash password before saving
+authSchema.pre("save", async function () {
+  // Don't hash if password wasn't changed
+  if (!this.isModified("password")) {
+    return;
+  }
 
-    this.password = await bcrypt.hash(this.password,10);
-    next();
-})
+  // Don't try to hash an empty password
+  if (!this.password) {
+    return;
+  }
 
+  this.password = await bcrypt.hash(this.password, 10);
+});
+
+// Compare password
 authSchema.methods.comparePassword = async function (password) {
-    return await bcrypt.compare(password,this.password);
-}
+  return bcrypt.compare(password, this.password);
+};
 
-export default mongoose.model("Auth",authSchema);
+const Auth = mongoose.model("Auth", authSchema);
+
+export default Auth;

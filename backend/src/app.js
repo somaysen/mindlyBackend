@@ -8,5 +8,13 @@ app.use(cookieParser());
 app.use(express.json());
 app.use("/api/auth", authRouter);
 
+app.use((error, req, res, next) => {
+  const statusCode = error.statusCode || 500;
+  res.status(statusCode).json({
+    success: false,
+    message: error.message || "Internal server error",
+  });
+});
+
 
 export default app;

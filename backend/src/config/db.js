@@ -1,18 +1,24 @@
 import mongoose from "mongoose";
 import config from "./env.js";
+import logger from "../utils/logger.js";
 
+const connectDB = async () => {
+  try {
+    const mongoURI = config.MONGODB;
 
-const connectDB = async () =>{
-    try {
-        if (!config.MONGODB) {
-            throw new Error("MONGO_URI is not configured");
-        }
-
-        await mongoose.connect(config.MONGODB);
-        console.log("MongoDB connected");
-    } catch (error) {
-        throw new Error(`MongoDB connection failed: ${error.message}`);
+    if (!mongoURI) {
+      throw new Error("MONGODB URI is not configured");
     }
+
+    await mongoose.connect(mongoURI, {
+      serverSelectionTimeoutMS: 10000,
+    });
+
+    logger.info("✅ MongoDB connected successfully");
+  } catch (error) {
+    console.error("❌ MongoDB connection failed:", error.message);
+    process.exit(1);
+  }
 };
 
 export default connectDB;
