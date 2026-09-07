@@ -13,6 +13,9 @@ const config = {
     FRONTEND_URL: process.env.FRONTEND_URL || "http://localhost:3000",
     AUTH_TOKEN_SECRET: process.env.AUTH_TOKEN_SECRET,
     AUTH_TOKEN_TTL_HOURS: Number(process.env.AUTH_TOKEN_TTL_HOURS) || 24,
+    REDIS_PORT:process.env.REDIS_PORT,
+    REDIS_HOST:process.env.REDIS_HOST,
+    REDIS_PASSWORD:process.env.REDIS_PASSWORD
 };
 
 export default config;

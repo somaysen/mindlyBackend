@@ -11,7 +11,7 @@ const UserSchema = new mongoose.Schema(
     name: {
       type: String,
       trim: true,
-      maxlength: 60,
+      maxLength: 60,
     },
     interests: [
       {
