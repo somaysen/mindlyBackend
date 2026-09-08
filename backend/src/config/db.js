@@ -3,6 +3,11 @@ import config from "./env.js";
 import logger from "../utils/logger.js";
 
 const connectDB = async () => {
+  // if (config.SKIP_DB) {
+  //   logger.warn("MongoDB connection skipped by configuration");
+  //   return;
+  // }
+
   try {
     const mongoURI = config.MONGODB;
 

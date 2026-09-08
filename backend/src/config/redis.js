@@ -1,32 +1,39 @@
-import redis from "redis";
+import Redis from "ioredis";
 import config from "./env.js";
 import logger from "../utils/logger.js";
 
-const { REDIS_HOST, REDIS_PORT, REDIS_PASSWORD } = config;
-
-const client = redis.createClient({
-  password: REDIS_PASSWORD,
-  socket: {
-    host: REDIS_HOST,
-    port: REDIS_PORT,
-  },
+const redisClient = new Redis(config.REDIS_URL, {
+  password: config.REDIS_PASSWORD || undefined,
+  lazyConnect: true,
+  retryStrategy: () => null,
 });
 
-client.on("error", (err) => {
-  logger.error("Redis connection error:", err.message);
+redisClient.on("error", (error) => {
+  logger.error(`Redis connection error: ${error.message}`);
 });
 
-client.on("connect", () => {
-  logger.info("✅ Redis connected successfully");
+redisClient.on("connect", () => {
+  logger.info("Redis connected successfully");
 });
 
 export async function connectRedis() {
+  if (config.SKIP_REDIS) {
+    logger.warn("Redis connection skipped by configuration");
+    return null;
+  }
+
+  if (redisClient.status === "ready") {
+    return redisClient;
+  }
+
   try {
-    await client.connect();
+    await redisClient.connect();
+    return redisClient;
   } catch (error) {
-    logger.error("Failed to connect to Redis:", error);
-    process.exit(1);
+    logger.error(`Failed to connect to Redis: ${error.message}`);
+    throw error;
   }
 }
 
-export const redisClient = client;
+export const getRedisClient = () => redisClient;
+export { redisClient };

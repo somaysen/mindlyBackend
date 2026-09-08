@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 
 const authSchema = new mongoose.Schema(
   {
@@ -14,7 +14,8 @@ const authSchema = new mongoose.Schema(
 
     password: {
       type: String,
-      trim: true,
+      required: true,
+      select: false,
     },
 
     googleId: {
@@ -57,11 +58,15 @@ authSchema.pre("save", async function () {
     return;
   }
 
-  this.password = await bcrypt.hash(this.password, 10);
+  this.password = await bcrypt.hash(this.password, 12);
 });
 
 // Compare password
 authSchema.methods.comparePassword = async function (password) {
+  if (!this.password) {
+    return false;
+  }
+
   return bcrypt.compare(password, this.password);
 };
 

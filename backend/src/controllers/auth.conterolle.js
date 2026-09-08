@@ -1,36 +1,38 @@
 import authService from "../services/auth.service.js";
+import config from "../config/env.js";
+
+const accessTokenCookieOptions = {
+  httpOnly: true,
+  secure: config.NODE_ENV === "production",
+  sameSite: config.NODE_ENV === "production" ? "none" : "lax",
+  maxAge: config.AUTH_TOKEN_TTL_HOURS * 60 * 60 * 1000,
+  path: "/",
+};
 
 class AuthController {
   register = async (req, res, next) => {
     try {
-      const result = await authService.register(req.body);
-
-      res.status(201).json({
-        success: true,
-        data: result,
-      });
+      const data = await authService.register(req.body);
+      res.status(201).json({ success: true, data });
     } catch (error) {
       next(error);
     }
   };
 
-  login = async (req, res, next)=>{
+  login = async (req, res, next) => {
     try {
-      const result = await authService.login(req.body);
-      
-      res.status(200).json({
-        success: true,
-        data: result
-      })
+      const { token, ...data } = await authService.login(req.body);
+      res.cookie("accessToken", token, accessTokenCookieOptions);
+      res.status(200).json({ success: true, data });
     } catch (error) {
-      next(error)
+      next(error);
     }
-  }
+  };
 
   verifyEmail = async (req, res, next) => {
     try {
-      await authService.verifyEmail(req.query.token || req.bady.token);
-      res.status(200).json({ success: true, message: "Email verified successfully" });
+      const data = await authService.verifyEmail(req.query.token || req.body.token);
+      res.status(200).json({ success: true, message: "Email verified successfully", data });
     } catch (error) {
       next(error);
     }
@@ -48,6 +50,15 @@ class AuthController {
     }
   };
 
+  logout = async (req, res, next) => {
+    try {
+      const data = await authService.logout(req.accessToken);
+      res.clearCookie("accessToken", accessTokenCookieOptions);
+      res.status(200).json({ success: true, ...data });
+    } catch (error) {
+      next(error);
+    }
+  };
 }
 
 export default new AuthController();

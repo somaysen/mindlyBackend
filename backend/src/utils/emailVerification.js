@@ -1,42 +1,20 @@
+import config from "../config/env.js";
 import transporter from "../config/mail.js";
 
-const sendVerificationEmail = async (email, token) => {
-    const verificationUrl =
-        `http://localhost:9000/api/auth/verify-email?token=${token}`;
+const sendVerificationEmail = async (user, token) => {
+  const verificationUrl = `${config.FRONTEND_URL}/verify-email?token=${encodeURIComponent(token)}`;
 
-    await transporter.sendMail({
-        from: `"Mindly" <${process.env.GMAIL_USER}>`,
-        to: email,
-        subject: "Verify your Mindly account",
-        html: `
-            <div style="font-family: Arial; padding: 30px;">
-                <h2>Welcome to Mindly 👋</h2>
-
-                <p>
-                    Thanks for creating an account.
-                    Please verify your email address.
-                </p>
-
-                <a
-                    href="${verificationUrl}"
-                    style="
-                        display: inline-block;
-                        padding: 12px 20px;
-                        background: #000;
-                        color: #fff;
-                        text-decoration: none;
-                        border-radius: 8px;
-                    "
-                >
-                    Verify Email
-                </a>
-
-                <p style="margin-top: 20px;">
-                    This link will expire in 15 minutes.
-                </p>
-            </div>
-        `,
-    });
+  await transporter.sendMail({
+    from: `Mindly <${config.GMAIL_USER}>`,
+    to: user.email,
+    subject: "Verify your Mindly email address",
+    text: `Verify your email address: ${verificationUrl}\n\nThis link expires in 15 minutes.`,
+    html: `
+      <p>Verify your email address by opening this link:</p>
+      <p><a href="${verificationUrl}">Verify email</a></p>
+      <p>This link expires in 15 minutes.</p>
+    `,
+  });
 };
 
 export default sendVerificationEmail;

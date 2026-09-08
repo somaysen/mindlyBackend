@@ -1,20 +1,31 @@
-import nodemailer from "nodemailer";
 import Auth from "../models/auth.model.js";
-import { AppError } from "../utils/errors.js";
 import config from "../config/env.js";
-
+import AppError from "../utils/errors.js";
+import sendVerificationEmail from "../utils/emailVerification.js";
 import {
+  blockAccessToken,
+  createAccessToken,
   createVerificationToken,
   hashToken,
-  createAccessToken,
+  verifyAccessToken,
 } from "../utils/token.js";
+
+const normalizeEmail = (email) =>
+  typeof email === "string" ? email.trim().toLowerCase() : null;
+
+const toSafeUser = (user) => ({
+  id: user._id,
+  name: user.name,
+  email: user.email,
+});
 
 class AuthService {
   async register(userData = {}) {
-    const { name, email, password } = userData;
+    const { password } = userData;
+    const email = normalizeEmail(userData.email);
 
-    if (!email || !password) {
-      throw new AppError("Email and password are required", 400);
+    if (typeof !email == "string" || typeof password !== "string" || !password) {
+      throw new AppError("email, and password are required", 400);
     }
 
     const existingUser = await Auth.findOne({ email });
@@ -24,47 +35,22 @@ class AuthService {
     }
 
     const user = await Auth.create({
-      name,
       email,
       password,
     });
 
     await this.sendVerificationEmail(user);
-
-    return {
-      id: user._id,
-      name: user.name,
-      email: user.email,
-    };
-  }
-
-  async resendVerification(email) {
-    if (!email) {
-      throw new AppError("Email is required", 400);
-    }
-
-    const user = await Auth.findOne({ email });
-
-    if (!user || user.isVerified) {
-      return;
-    }
-
-    await this.sendVerificationEmail(user);
+    return toSafeUser(user);
   }
 
   async verifyEmail(token) {
-    if (!token) {
+    if (typeof token !== "string" || !token) {
       throw new AppError("Verification token is required", 400);
     }
 
-    // Hash the token received from the URL
-    const tokenHash = hashToken(token);
-
     const user = await Auth.findOne({
-      emailVerificationToken: tokenHash,
-      emailVerificationExpires: {
-        $gt: new Date(),
-      },
+      emailVerificationToken: hashToken(token),
+      emailVerificationExpires: { $gt: new Date() },
     });
 
     if (!user) {
@@ -74,8 +60,26 @@ class AuthService {
     user.isVerified = true;
     user.emailVerificationToken = null;
     user.emailVerificationExpires = null;
-
     await user.save();
+
+    return toSafeUser(user);
+  }
+
+  async resendVerification(emailInput) {
+    const email = normalizeEmail(emailInput);
+
+    if (!email) {
+      throw new AppError("Email is required", 400);
+    }
+
+    const user = await Auth.findOne({ email });
+
+    // A single generic response prevents email-account enumeration.
+    if (!user || user.isVerified) {
+      return;
+    }
+
+    await this.sendVerificationEmail(user);
   }
 
   async sendVerificationEmail(user) {
@@ -83,103 +87,75 @@ class AuthService {
       throw new AppError("Email service is not configured", 500);
     }
 
-    // Create verification token
     const { token, hashedToken, expiresAt } = createVerificationToken();
-
-    // Save only the hashed token in database
     user.emailVerificationToken = hashedToken;
     user.emailVerificationExpires = expiresAt;
-
     await user.save();
 
-    const verificationUrl = `${config.FRONTEND_URL}/verify-email?token=${token}`;
-
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: config.GMAIL_USER,
-        pass: config.GMAIL_APP_PASSWORD,
-      },
-    });
-
     try {
-      await transporter.sendMail({
-        from: `Mindly <${config.GMAIL_USER}>`,
-        to: user.email,
-        subject: "Verify your Mindly email address",
-
-        text: `
-Verify your email address:
-
-${verificationUrl}
-
-This link expires in 15 minutes.
-        `,
-
-        html: `
-          <p>Verify your email address by opening this link:</p>
-
-          <p>
-            <a href="${verificationUrl}">
-              Verify email
-            </a>
-          </p>
-
-          <p>This link expires in 15 minutes.</p>
-        `,
-      });
-    } catch (error) {
+      await sendVerificationEmail(user, token);
+    } catch {
       user.emailVerificationToken = null;
       user.emailVerificationExpires = null;
-
       await user.save();
-
       throw new AppError("Unable to send verification email", 502);
     }
   }
 
   async login(userData = {}) {
-    const { email, password } = userData;
+    const email = normalizeEmail(userData.email);
+    const { password } = userData;
 
-    if (!email || !password) {
+    if (!email || typeof password !== "string" || !password) {
       throw new AppError("Email and password are required", 400);
     }
 
-    const user = await Auth.findOne({ email });
+    // Get user with password
+    const user = await Auth.findOne({ email }).select("+password");
 
-    if (!user) {
+    if (!user || !(await user.comparePassword(password))) {
       throw new AppError("Invalid email or password", 401);
     }
 
-    const isPasswordValid = await user.comparePassword(password);
-
-    if (!isPasswordValid) {
-      throw new AppError("Invalid email or password", 401);
-    }
-
+    // Check email verification
     if (!user.isVerified) {
       throw new AppError("Please verify your email first", 403);
     }
 
-    user.lastLoginAt = new Date();
+    // Update only lastLoginAt
+    const lastLoginAt = new Date();
 
-    await user.save();
-
-    // JWT creation is now handled by token.js
-    const token = createAccessToken(user);
+    await Auth.updateOne({ _id: user._id }, { $set: { lastLoginAt } });
 
     return {
-      token,
+      token: createAccessToken(user),
 
       user: {
-        id: user._id,
-        fullname: user.name,
-        email: user.email,
+        ...toSafeUser(user),
         isVerified: user.isVerified,
-        lastLoginAt: user.lastLoginAt,
+        lastLoginAt,
         createdAt: user.createdAt,
       },
     };
+  }
+
+  async logout(token) {
+    if (!token) {
+      throw new AppError("Access token is required", 401);
+    }
+
+    try {
+      verifyAccessToken(token);
+    } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
+
+      throw new AppError("Invalid or expired authentication token", 401);
+    }
+
+    await blockAccessToken(token);
+    return { message: "Logged out successfully" };
   }
 }
 
