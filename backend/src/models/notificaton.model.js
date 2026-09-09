@@ -10,6 +10,13 @@ const notificationSchema = new mongoose.Schema(
       index: true,
     },
 
+    // Master notification switch
+    notificationsEnabled: {
+      type: Boolean,
+      default: true,
+    },
+
+    // Task reminders
     taskReminders: {
       enabled: {
         type: Boolean,
@@ -17,6 +24,7 @@ const notificationSchema = new mongoose.Schema(
       },
     },
 
+    // Focus session notifications
     focusSessions: {
       enabled: {
         type: Boolean,
@@ -24,6 +32,7 @@ const notificationSchema = new mongoose.Schema(
       },
     },
 
+    // Weekly reflection reminders
     weeklyReflections: {
       enabled: {
         type: Boolean,
@@ -31,19 +40,27 @@ const notificationSchema = new mongoose.Schema(
       },
     },
 
-    notificationsEnabled: {
-      type: Boolean,
-      default: true,
+    // Email notifications
+    emailNotifications: {
+      enabled: {
+        type: Boolean,
+        default: true,
+      },
+    },
+
+    // Push notifications
+    pushNotifications: {
+      enabled: {
+        type: Boolean,
+        default: true,
+      },
     },
   },
   {
     timestamps: true,
-  }
+  },
 );
 
-const Notification = mongoose.model(
-  "Notification",
-  notificationSchema
-);
+const Notification = mongoose.model("Notification", notificationSchema);
 
 export default Notification;

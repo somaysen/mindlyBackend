@@ -3,6 +3,7 @@ import authRouter from "./routers/auth.routes.js"
 import cookieParser from "cookie-parser"
 import userRoute from "./routers/user.routes.js"
 import TaskRouter from "./routers/task.routes.js"
+import NotificationRoute from "./routers/notification.routes.js"
 import AppError from "./utils/errors.js";
 import logger from "./utils/logger.js";
 import cors from "cors"
@@ -17,6 +18,7 @@ app.use(express.json());
 app.use("/api/auth", authRouter);
 app.use("/api/user",userRoute)
 app.use("/api/task/",TaskRouter)
+app.use("/api/notification",NotificationRoute)
 
 app.use((error, req, res, next) => {
   const statusCode = Number.isInteger(error.statusCode)
