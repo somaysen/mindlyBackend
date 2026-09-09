@@ -14,7 +14,7 @@ class UserService {
     if (!auth) {
       throw new AppError("Auth ID is required", 400);
     }
-
+u
     if (!name || typeof name !== "string" || !name.trim()) {
       throw new AppError("Name is required", 400);
     }
