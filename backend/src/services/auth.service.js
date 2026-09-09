@@ -24,46 +24,88 @@ class AuthService {
     const { password } = userData;
     const email = normalizeEmail(userData.email);
 
-    if (typeof !email == "string" || typeof password !== "string" || !password) {
-      throw new AppError("email, and password are required", 400);
+    // Validate input
+    if (
+      typeof email !== "string" ||
+      !email ||
+      typeof password !== "string" ||
+      !password
+    ) {
+      throw new AppError("Email and password are required", 400);
     }
 
+    // Check if user already exists
     const existingUser = await Auth.findOne({ email });
 
     if (existingUser) {
+      // User exists but has not verified their email
+      if (!existingUser.isVerified) {
+        await this.sendVerificationEmail(existingUser);
+
+        return {
+          ...toSafeUser(existingUser),
+          message: "Verification email has been resent",
+        };
+      }
+
+      // User exists and is already verified
       throw new AppError("A user with this email already exists", 409);
     }
 
+    // Create new user
     const user = await Auth.create({
       email,
       password,
+      isVerified: false,
     });
 
+    // Send verification email
     await this.sendVerificationEmail(user);
-    return toSafeUser(user);
+
+    return {
+      ...toSafeUser(user),
+      message: "Registration successful. Please verify your email.",
+    };
   }
 
-  async verifyEmail(token) {
-    if (typeof token !== "string" || !token) {
-      throw new AppError("Verification token is required", 400);
-    }
-
-    const user = await Auth.findOne({
-      emailVerificationToken: hashToken(token),
-      emailVerificationExpires: { $gt: new Date() },
-    });
-
-    if (!user) {
-      throw new AppError("Verification link is invalid or has expired", 400);
-    }
-
-    user.isVerified = true;
-    user.emailVerificationToken = null;
-    user.emailVerificationExpires = null;
-    await user.save();
-
-    return toSafeUser(user);
+ async verifyEmail(token) {
+  if (typeof token !== "string" || !token) {
+    throw new AppError(
+      "Verification token is required",
+      400
+    );
   }
+
+  const user = await Auth.findOne({
+    emailVerificationToken: hashToken(token),
+    emailVerificationExpires: {
+      $gt: new Date(),
+    },
+  });
+
+  if (!user) {
+    throw new AppError(
+      "Verification link is invalid or has expired",
+      400
+    );
+  }
+
+  user.isVerified = true;
+  user.emailVerificationToken = null;
+  user.emailVerificationExpires = null;
+
+  await user.save();
+
+  return {
+    token: createAccessToken(user),
+
+    user: {
+      ...toSafeUser(user),
+      isVerified: user.isVerified,
+      createdAt: user.createdAt,
+    },
+  };
+}
 
   async resendVerification(emailInput) {
     const email = normalizeEmail(emailInput);
@@ -145,7 +187,9 @@ class AuthService {
     }
 
     try {
-      verifyAccessToken(token);
+      // Only verify JWT validity here.
+      // Do NOT check the revoked-token blacklist.
+      verifyAccessToken(token, { checkRevoked: false });
     } catch (error) {
       if (error instanceof AppError) {
         throw error;
@@ -154,8 +198,12 @@ class AuthService {
       throw new AppError("Invalid or expired authentication token", 401);
     }
 
+    // Revoke the token after successful verification
     await blockAccessToken(token);
-    return { message: "Logged out successfully" };
+
+    return {
+      message: "Logged out successfully",
+    };
   }
 }
 
