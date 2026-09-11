@@ -1,5 +1,6 @@
 
 import userService from "../services/user.service.js";
+import Auth from "../models/auth.model.js";
 
 class UserController {
 
@@ -7,8 +8,12 @@ class UserController {
         try {
             const data = await userService.createUser({
                 ...req.body,
-                auth: req.user.sub,
+                auth: req.user,
             });
+
+            if(!userExit){
+                await Auth.findOne(req.user);
+            }
 
             res.status(201).json({
                 success: true,

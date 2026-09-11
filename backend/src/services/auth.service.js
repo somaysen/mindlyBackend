@@ -1,7 +1,9 @@
+
 import Auth from "../models/auth.model.js";
 import config from "../config/env.js";
 import AppError from "../utils/errors.js";
 import sendVerificationEmail from "../utils/emailVerification.js";
+
 import {
   blockAccessToken,
   createAccessToken,
@@ -81,7 +83,10 @@ class AuthService {
     });
 
     if (!user) {
-      throw new AppError("Verification link is invalid or has expired", 400);
+      throw new AppError(
+        "Verification link is invalid or has expired",
+        400
+      );
     }
 
     user.isVerified = true;
@@ -101,59 +106,70 @@ class AuthService {
     };
   }
 
- async resendVerification(emailInput) {
-  const email = normalizeEmail(emailInput);
+  async resendVerification(user) {
+    if (!config.GMAIL_USER || !config.GMAIL_APP_PASSWORD) {
+      throw new AppError("Email service is not configured", 500);
+    }
 
-  if (!email) {
-    throw new AppError("Email is required", 400);
+    if (!user) {
+      throw new AppError("User not found", 404);
+    }
+
+    // Already verified, nothing to resend
+    if (user.isVerified === true) {
+      return null;
+    }
+
+    // Reuse the existing verification-email logic
+    return await this.sendVerificationEmail(user);
   }
 
-  const user = await Auth.findOne({ email });
+  async sendVerificationEmail(user) {
+    if (!config.GMAIL_USER || !config.GMAIL_APP_PASSWORD) {
+      throw new AppError("Email service is not configured", 500);
+    }
 
-  // Do not reveal whether the email exists or is already verified.
-  if (!user || user.isVerified) {
-    return;
-  }
-  await this.sendVerificationEmail(user);
+    if (!user) {
+      throw new AppError("User not found", 404);
+    }
 
-}
+    const { token, hashedToken, expiresAt } = createVerificationToken();
 
-async sendVerificationEmail(user) {
-  if (!config.GMAIL_USER || !config.GMAIL_APP_PASSWORD) {
-    throw new AppError("Email service is not configured", 500);
-  }
-
-  const { token, hashedToken, expiresAt } = createVerificationToken();
-
-  user.emailVerificationToken = hashedToken;
-  user.emailVerificationExpires = expiresAt;
-
-  await user.save();
-
-  try {
-    const result = await sendVerificationMail(user, token);
-
-    console.log("Verification email sent successfully");
-    console.log("Message ID:", result?.messageId);
-
-    return result;
-  } catch (error) {
-    console.error("========== EMAIL ERROR ==========");
-    console.error("Message:", error.message);
-    console.error("Code:", error.code);
-    console.error("Command:", error.command);
-    console.error("Response:", error.response);
-    console.error("Response Code:", error.responseCode);
-    console.error("================================");
-
-    user.emailVerificationToken = null;
-    user.emailVerificationExpires = null;
+    user.emailVerificationToken = hashedToken;
+    user.emailVerificationExpires = expiresAt;
 
     await user.save();
 
-    throw new AppError("Unable to send verification email", 502);
+    try {
+      // IMPORTANT:
+      // This must match the imported function name.
+      const result = await sendVerificationEmail(user, token);
+
+      console.log("Verification email sent successfully");
+      console.log("Message ID:", result?.messageId);
+
+      return result;
+    } catch (error) {
+      console.error("========== EMAIL ERROR ==========");
+      console.error("Message:", error.message);
+      console.error("Code:", error.code);
+      console.error("Command:", error.command);
+      console.error("Response:", error.response);
+      console.error("Response Code:", error.responseCode);
+      console.error("================================");
+
+      // Roll back token if email sending fails
+      user.emailVerificationToken = null;
+      user.emailVerificationExpires = null;
+
+      await user.save();
+
+      throw new AppError(
+        "Unable to send verification email",
+        502
+      );
+    }
   }
-}
 
   async login(userData = {}) {
     const email = normalizeEmail(userData.email);
@@ -175,10 +191,13 @@ async sendVerificationEmail(user) {
       throw new AppError("Please verify your email first", 403);
     }
 
-    // Update only lastLoginAt
+    // Update last login
     const lastLoginAt = new Date();
 
-    await Auth.updateOne({ _id: user._id }, { $set: { lastLoginAt } });
+    await Auth.updateOne(
+      { _id: user._id },
+      { $set: { lastLoginAt } }
+    );
 
     return {
       token: createAccessToken(user),
@@ -200,13 +219,18 @@ async sendVerificationEmail(user) {
     try {
       // Only verify JWT validity here.
       // Do NOT check the revoked-token blacklist.
-      verifyAccessToken(token, { checkRevoked: false });
+      verifyAccessToken(token, {
+        checkRevoked: false,
+      });
     } catch (error) {
       if (error instanceof AppError) {
         throw error;
       }
 
-      throw new AppError("Invalid or expired authentication token", 401);
+      throw new AppError(
+        "Invalid or expired authentication token",
+        401
+      );
     }
 
     // Revoke the token after successful verification

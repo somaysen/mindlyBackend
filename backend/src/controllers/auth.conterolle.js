@@ -1,5 +1,6 @@
 import authService from "../services/auth.service.js";
 import config from "../config/env.js";
+import Auth from "../models/auth.model.js";
 
 const accessTokenCookieOptions = {
   httpOnly: true,
@@ -46,16 +47,40 @@ class AuthController {
   };
 
   resendVerification = async (req, res, next) => {
-    try {
-      await authService.resendVerification(req.body.email);
-      res.status(200).json({
-        success: true,
-        message: "If the account exists, a verification email has been sent",
-      });
-    } catch (error) {
-      next(error);
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      throw new AppError("Email is required", 400);
     }
-  };
+
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const user = await Auth.findOne({
+      email: normalizedEmail,
+    });
+
+    // Generic response
+    // Prevents revealing whether an email is registered
+    if (!user || user.isVerified === true) {
+      return res.status(200).json({
+        success: true,
+        message:
+          "If the account exists and is not verified, a verification email has been sent.",
+      });
+    }
+
+    await authService.resendVerification(user);
+
+    return res.status(200).json({
+      success: true,
+      message: "Verification email sent successfully",
+    });
+  } catch (error) {
+    console.error("Resend verification error:", error);
+    next(error);
+  }
+};
 
   logout = async (req, res, next) => {
     try {

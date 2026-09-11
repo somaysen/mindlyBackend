@@ -5,7 +5,7 @@ class TaskController {
     try {
       const data = await taskService.creatingTask({
         ...req.body,
-        auth: req.user.sub,
+        auth: req.user,
       });
 
       res.status(201).json({

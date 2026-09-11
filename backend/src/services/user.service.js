@@ -3,43 +3,44 @@ import AppError from "../utils/errors.js";
 
 class UserService {
   // Create user profile
-  async createUser(userData = {}) {
+  async createUser(userData = {} ) {
     const {
       auth,
       name,
       interests = [],
       planning = [],
+      taskId,
+      notificationId
     } = userData;
 
+    // Validate Auth ID
     if (!auth) {
       throw new AppError("Auth ID is required", 400);
     }
-u
+
+    // Validate name
     if (!name || typeof name !== "string" || !name.trim()) {
       throw new AppError("Name is required", 400);
     }
 
+    // Validate interests
     if (!Array.isArray(interests)) {
       throw new AppError("Interests must be an array", 400);
     }
 
+    // Validate planning
     if (!Array.isArray(planning)) {
       throw new AppError("Planning must be an array", 400);
     }
 
-    // Check if profile already exists
-    const existingUser = await UserModel.findOne({ auth });
-
-    if (existingUser) {
-      throw new AppError("User profile already exists", 409);
-    }
-    console.log(req.user.id)
-
+    // Create user profile
     const user = await UserModel.create({
       auth,
       name: name.trim(),
       interests,
       planning,
+      task : taskId,
+      notification : notificationId,
     });
 
     return user;
@@ -81,8 +82,6 @@ u
     return user;
   }
 
-  
-
   // Update interests
   async updateInterests(userId, interests = []) {
     if (!userId) {
@@ -95,11 +94,15 @@ u
 
     const user = await UserModel.findByIdAndUpdate(
       userId,
-      { $set: { interests } },
+      {
+        $set: {
+          interests,
+        },
+      },
       {
         new: true,
         runValidators: true,
-      },
+      }
     );
 
     if (!user) {
@@ -108,8 +111,6 @@ u
 
     return user;
   }
-
-
 }
 
 export default new UserService();

@@ -14,7 +14,10 @@ class NotificationService {
       });
     }
 
-    return settings;
+    return {
+      notificationId: settings._id,
+      settings,
+    };
   };
 
   // Create / update notification settings
@@ -35,7 +38,6 @@ class NotificationService {
 
     const settings = await Notification.findOneAndUpdate(
       {
-        _id,
         user: userId,
       },
       {
@@ -49,7 +51,10 @@ class NotificationService {
       }
     );
 
-    return settings;
+    return {
+      notificationId: settings._id,
+      settings,
+    };
   };
 }
 

@@ -4,7 +4,11 @@ class NotificationController {
   permissionNotification = async (req, res, next) => {
     try {
       // Get user ID from auth middleware
-      const userId = req.user._id;
+      const userId =   req.user;
+      console.log(userId);
+      if(!userId){
+        throw error ("user id undefiend")
+      }
 
       // Notification settings from request body
       const data = req.body;
