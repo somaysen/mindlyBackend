@@ -3,15 +3,21 @@ import notificationService from "../services/notification.service.js";
 class NotificationController {
   permissionNotification = async (req, res, next) => {
     try {
-      const data =
-        await notificationService.getNotificationSettings({
-          ...req.body,
-          auth: req.user.sub,
-        });
+      // Get user ID from auth middleware
+      const userId = req.user._id;
 
-      return res.status(201).json({
-        success: true,
+      // Notification settings from request body
+      const data = req.body;
+
+      const settings = await notificationService.updateNotificationSettings(
+        userId,
         data,
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: "Notification settings updated successfully",
+        data: settings,
       });
     } catch (error) {
       next(error);
@@ -20,16 +26,15 @@ class NotificationController {
 
   updateNotificationSettings = async (req, res, next) => {
     try {
-      const data =
-        await notificationService.updateNotificationSettings(
-          req.user._id,
-          req.body
-        );
+      const userId = req.user._id;
+
+      const settings =
+        await notificationService.getNotificationSettings(userId);
 
       return res.status(200).json({
         success: true,
-        message: "Notification settings updated successfully",
-        data,
+        message: "Notification settings fetched successfully",
+        data: settings,
       });
     } catch (error) {
       next(error);

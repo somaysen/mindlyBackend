@@ -1,6 +1,7 @@
 import Notification from "../models/notificaton.model.js";
 
 class NotificationService {
+  // Get notification settings
   getNotificationSettings = async (userId) => {
     let settings = await Notification.findOne({
       user: userId,
@@ -16,6 +17,7 @@ class NotificationService {
     return settings;
   };
 
+  // Create / update notification settings
   updateNotificationSettings = async (userId, data) => {
     const allowedData = {};
 
@@ -23,16 +25,17 @@ class NotificationService {
       allowedData.notificationsEnabled = data.notificationsEnabled;
     }
 
-    if (typeof data.taskReminders?.enabled === "boolean") {
-      allowedData["taskReminders.enabled"] = data.taskReminders.enabled;
+    if (typeof data.taskReminders === "boolean") {
+      allowedData["taskReminders.enabled"] = data.taskReminders;
     }
 
-    if (typeof data.focusSessions?.enabled === "boolean") {
-      allowedData["focusSessions.enabled"] = data.focusSessions.enabled;
+    if (typeof data.focusSessions === "boolean") {
+      allowedData["focusSessions.enabled"] = data.focusSessions;
     }
 
     const settings = await Notification.findOneAndUpdate(
       {
+        _id,
         user: userId,
       },
       {
@@ -43,7 +46,7 @@ class NotificationService {
         upsert: true,
         runValidators: true,
         setDefaultsOnInsert: true,
-      },
+      }
     );
 
     return settings;

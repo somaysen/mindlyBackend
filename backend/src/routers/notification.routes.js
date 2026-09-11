@@ -8,7 +8,13 @@ const router = express.Router();
 router.post(
   "/create-notification",
   authMiddleware,
-  UserNotification.permissionNotification
+  UserNotification.permissionNotification,
+);
+
+router.patch(
+  "./update-notification",
+  authMiddleware,
+  UserNotification.updateNotificationSettings,
 );
 
 export default router;

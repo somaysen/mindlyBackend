@@ -68,81 +68,92 @@ class AuthService {
     };
   }
 
- async verifyEmail(token) {
-  if (typeof token !== "string" || !token) {
-    throw new AppError(
-      "Verification token is required",
-      400
-    );
+  async verifyEmail(token) {
+    if (typeof token !== "string" || !token) {
+      throw new AppError("Verification token is required", 400);
+    }
+
+    const user = await Auth.findOne({
+      emailVerificationToken: hashToken(token),
+      emailVerificationExpires: {
+        $gt: new Date(),
+      },
+    });
+
+    if (!user) {
+      throw new AppError("Verification link is invalid or has expired", 400);
+    }
+
+    user.isVerified = true;
+    user.emailVerificationToken = null;
+    user.emailVerificationExpires = null;
+
+    await user.save();
+
+    return {
+      token: createAccessToken(user),
+
+      user: {
+        ...toSafeUser(user),
+        isVerified: user.isVerified,
+        createdAt: user.createdAt,
+      },
+    };
   }
 
-  const user = await Auth.findOne({
-    emailVerificationToken: hashToken(token),
-    emailVerificationExpires: {
-      $gt: new Date(),
-    },
-  });
+ async resendVerification(emailInput) {
+  const email = normalizeEmail(emailInput);
 
-  if (!user) {
-    throw new AppError(
-      "Verification link is invalid or has expired",
-      400
-    );
+  if (!email) {
+    throw new AppError("Email is required", 400);
   }
 
-  user.isVerified = true;
-  user.emailVerificationToken = null;
-  user.emailVerificationExpires = null;
+  const user = await Auth.findOne({ email });
+
+  // Do not reveal whether the email exists or is already verified.
+  if (!user || user.isVerified) {
+    return;
+  }
+  await this.sendVerificationEmail(user);
+
+}
+
+async sendVerificationEmail(user) {
+  if (!config.GMAIL_USER || !config.GMAIL_APP_PASSWORD) {
+    throw new AppError("Email service is not configured", 500);
+  }
+
+  const { token, hashedToken, expiresAt } = createVerificationToken();
+
+  user.emailVerificationToken = hashedToken;
+  user.emailVerificationExpires = expiresAt;
 
   await user.save();
 
-  return {
-    token: createAccessToken(user),
+  try {
+    const result = await sendVerificationMail(user, token);
 
-    user: {
-      ...toSafeUser(user),
-      isVerified: user.isVerified,
-      createdAt: user.createdAt,
-    },
-  };
-}
+    console.log("Verification email sent successfully");
+    console.log("Message ID:", result?.messageId);
 
-  async resendVerification(emailInput) {
-    const email = normalizeEmail(emailInput);
+    return result;
+  } catch (error) {
+    console.error("========== EMAIL ERROR ==========");
+    console.error("Message:", error.message);
+    console.error("Code:", error.code);
+    console.error("Command:", error.command);
+    console.error("Response:", error.response);
+    console.error("Response Code:", error.responseCode);
+    console.error("================================");
 
-    if (!email) {
-      throw new AppError("Email is required", 400);
-    }
+    user.emailVerificationToken = null;
+    user.emailVerificationExpires = null;
 
-    const user = await Auth.findOne({ email });
-
-    // A single generic response prevents email-account enumeration.
-    if (!user || user.isVerified) {
-      return;
-    }
-
-    await this.sendVerificationEmail(user);
-  }
-
-  async sendVerificationEmail(user) {
-    if (!config.GMAIL_USER || !config.GMAIL_APP_PASSWORD) {
-      throw new AppError("Email service is not configured", 500);
-    }
-
-    const { token, hashedToken, expiresAt } = createVerificationToken();
-    user.emailVerificationToken = hashedToken;
-    user.emailVerificationExpires = expiresAt;
     await user.save();
 
-    try {
-      await sendVerificationEmail(user, token);
-    } catch {
-      user.emailVerificationToken = null;
-      user.emailVerificationExpires = null;
-      await user.save();
-      throw new AppError("Unable to send verification email", 502);
-    }
+    throw new AppError("Unable to send verification email", 502);
   }
+}
 
   async login(userData = {}) {
     const email = normalizeEmail(userData.email);
