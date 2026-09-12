@@ -1,3 +1,4 @@
+
 import Notification from "../models/notificaton.model.js";
 
 class NotificationService {
@@ -21,19 +22,27 @@ class NotificationService {
   };
 
   // Create / update notification settings
-  updateNotificationSettings = async (userId, data) => {
+  updateNotificationSettings = async (userId, data = {}) => {
     const allowedData = {};
 
     if (typeof data.notificationsEnabled === "boolean") {
-      allowedData.notificationsEnabled = data.notificationsEnabled;
+      allowedData.notificationsEnabled =
+        data.notificationsEnabled;
     }
 
     if (typeof data.taskReminders === "boolean") {
-      allowedData["taskReminders.enabled"] = data.taskReminders;
+      allowedData["taskReminders.enabled"] =
+        data.taskReminders;
     }
 
     if (typeof data.focusSessions === "boolean") {
-      allowedData["focusSessions.enabled"] = data.focusSessions;
+      allowedData["focusSessions.enabled"] =
+        data.focusSessions;
+    }
+
+    if (typeof data.weeklyReflections === "boolean") {
+      allowedData["weeklyReflections.enabled"] =
+        data.weeklyReflections;
     }
 
     const settings = await Notification.findOneAndUpdate(
@@ -52,10 +61,10 @@ class NotificationService {
     );
 
     return {
-      notificationId: settings._id,
+      notificationId: settings._id.toString(),
       settings,
     };
   };
 }
 
-export default new NotificationService();
+export default new NotificationService()

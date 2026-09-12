@@ -2,16 +2,18 @@ import UserModel from "../models/user.model.js";
 import AppError from "../utils/errors.js";
 
 class UserService {
-  // Create user profile
-  async createUser(userData = {} ) {
+  // Create or update user profile
+  async createUser(userData = {}) {
     const {
       auth,
       name,
       interests = [],
       planning = [],
       taskId,
-      notificationId
+      notificationId,
     } = userData;
+
+    console.log(userData);
 
     // Validate Auth ID
     if (!auth) {
@@ -33,14 +35,37 @@ class UserService {
       throw new AppError("Planning must be an array", 400);
     }
 
-    // Create user profile
+    // Check if user profile already exists
+    const existingUser = await UserModel.findOne({ auth });
+
+    // If user already exists, update it instead of creating duplicate
+    if (existingUser) {
+      existingUser.name = name.trim();
+      existingUser.interests = interests;
+      existingUser.planning = planning;
+
+      // Only update these if values were provided
+      if (taskId) {
+        existingUser.task = taskId;
+      }
+
+      if (notificationId) {
+        existingUser.notification = notificationId;
+      }
+
+      await existingUser.save();
+
+      return existingUser;
+    }
+
+    // Create new user profile
     const user = await UserModel.create({
       auth,
       name: name.trim(),
       interests,
       planning,
-      task : taskId,
-      notification : notificationId,
+      task: taskId || undefined,
+      notification: notificationId || undefined,
     });
 
     return user;
