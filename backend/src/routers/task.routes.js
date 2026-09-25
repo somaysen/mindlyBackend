@@ -13,4 +13,10 @@ router.post(
   taskController.creatingTask.bind(taskController)
 );
 
+
+router.get(
+  "/get-all-tasks",
+  authMiddleware,
+  taskController.getAllTasks.bind(taskController)
+);
 export default router;

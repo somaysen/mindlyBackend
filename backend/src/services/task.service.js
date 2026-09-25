@@ -53,6 +53,31 @@ class TaskService {
       throw new AppError("Failed to create task", 500);
     }
   }
+
+  async getAllTasks(userData = {}) {
+    try {
+      const { user } = userData;
+
+      if (!user) {
+        throw new AppError("user ID is required", 400);
+      }
+
+      const tasks = await TaskModel.find({ user: user });
+
+      if (!tasks) {
+        throw new AppError("No tasks found", 404);
+      } else {
+        return tasks;
+      } if (tasks.length === 0) {
+        throw new AppError("No tasks found", 200);
+      } else {
+        return tasks;
+      }
+    } catch (error) {
+      console.error("Get All Tasks Error:", error);
+      throw error;
+    }
+  }
 }
 
 export default new TaskService();
