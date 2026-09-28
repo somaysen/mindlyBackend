@@ -1,42 +1,40 @@
 import express from "express";
-import authRouter from "./routers/auth.routes.js"
-import cookieParser from "cookie-parser"
-import userRoute from "./routers/user.routes.js"
-import TaskRouter from "./routers/task.routes.js"
-import NotificationRoute from "./routers/notification.routes.js"
-import AppError from "./utils/errors.js";
-import logger from "./utils/logger.js";
-import cors from "cors"
-import {corsOptions} from "./config/corsOptions.js"
+import cookieParser from "cookie-parser";
+import cors from "cors";
 
+import authRouter from "./routers/auth.routes.js";
+import userRoute from "./routers/user.routes.js";
+import TaskRouter from "./routers/task.routes.js";
+import NotificationRoute from "./routers/notification.routes.js";
+
+import errorMiddleware from "./middlewares/errorMiddleware.js";
+import { corsOptions } from "./config/corsOptions.js";
 
 const app = express();
+
+// ==========================
+// Global Middleware
+// ==========================
+
 app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors(corsOptions));
 app.use(express.json());
+
+// ==========================
+// Routes
+// ==========================
+
 app.use("/api/auth", authRouter);
-app.use("/api/user",userRoute)
-app.use("/api/task/",TaskRouter)
-app.use("/api/notification",NotificationRoute)
+app.use("/api/user", userRoute);
+app.use("/api/task", TaskRouter);
+app.use("/api/notification", NotificationRoute);
 
-app.use((error, req, res, next) => {
-  const statusCode = Number.isInteger(error.statusCode)
-    ? error.statusCode
-    : 500;
+// ==========================
+// Error Middleware
+// MUST BE LAST
+// ==========================
 
-  if (statusCode >= 500) {
-    logger.error(`${req.method} ${req.originalUrl}: ${error.stack || error.message}`);
-  }
-
-  res.status(statusCode).json({
-    success: false,
-    message:
-      error instanceof AppError
-        ? error.message
-        : "Internal server error",
-  });
-});
-
+app.use(errorMiddleware);
 
 export default app;

@@ -200,7 +200,7 @@ class AuthService {
     );
 
     return {
-      token: createAccessToken(user),
+      token: createAccessToken(user._id),
 
       user: {
         ...toSafeUser(user),

@@ -67,6 +67,7 @@ const authMiddleware = async (req, res, next) => {
     // IMPORTANT:
     // decoded.sub contains the MongoDB user ID
     req.user = decoded.sub;
+    // console.log("authId = ",req.user);
 
     // Keep the token available if needed later
     req.accessToken = token;
