@@ -13,7 +13,7 @@ class UserService {
       notificationId,
     } = userData;
 
-    console.log(userData);
+     console.log(userData);
 
     // Validate Auth ID
     if (!auth) {
@@ -91,6 +91,7 @@ class UserService {
 
   // Get user by Auth ID
   async getUserByAuthId(authId) {
+    console.log("userIS",authId)
     if (!authId) {
       throw new AppError("Auth ID is required", 400);
     }

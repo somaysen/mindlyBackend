@@ -2,6 +2,7 @@ import express from "express";
 
 import TaskController from "../controllers/task.controller.js";
 import authMiddleware from "../middlewares/auth.middlewar.js";
+import userMiddleware from "../middlewares/user.middlewer.js"
 
 const router = express.Router();
 
@@ -15,8 +16,8 @@ router.post(
 
 
 router.get(
-  "/get-all-tasks",
-  authMiddleware,
+  "/getTaskBy-UserId",
+  authMiddleware,userMiddleware,
   taskController.getAllTasks.bind(taskController)
 );
 export default router;

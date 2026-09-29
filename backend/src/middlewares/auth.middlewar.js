@@ -6,14 +6,15 @@ import {
 
 const authMiddleware = async (req, res, next) => {
   try {
-    // Get token from Authorization header
+    // Get Authorization header
     const authorization = req.get("authorization");
 
-    // Match: Bearer <token>
+    // Extract Bearer token
     const match = authorization?.match(/^Bearer\s+(.+)$/i);
 
-    // Prefer Authorization header, fallback to cookie
-    const token = match?.[1]?.trim() || req.cookies?.accessToken;
+    // Authorization header first, cookie fallback
+    const token =
+      match?.[1]?.trim() || req.cookies?.accessToken;
 
     if (!token) {
       return next(
@@ -21,7 +22,7 @@ const authMiddleware = async (req, res, next) => {
       );
     }
 
-    // Verify JWT
+    // Verify token
     let decoded;
 
     try {
@@ -35,14 +36,19 @@ const authMiddleware = async (req, res, next) => {
       );
     }
 
-    // Make sure token contains user ID
+    console.log("Decoded JWT:", decoded);
+
+    // JWT must contain sub
     if (!decoded?.sub) {
       return next(
-        new AppError("Invalid authentication token payload", 401)
+        new AppError(
+          "Invalid authentication token payload",
+          401
+        )
       );
     }
 
-    // Check whether token has been revoked
+    // Check revoked token
     try {
       const blocked = await isAccessTokenBlocked(token);
 
@@ -64,12 +70,17 @@ const authMiddleware = async (req, res, next) => {
       );
     }
 
-    // IMPORTANT:
-    // decoded.sub contains the MongoDB user ID
-    req.user = decoded.sub;
-    // console.log("authId = ",req.user);
+    // --------------------------------
+    // IMPORTANT
+    // Store auth user in req.user
+    // --------------------------------
+    req.user = {
+      id: decoded.sub,
+    };
 
-    // Keep the token available if needed later
+    console.log("Auth ID:", req.user.id);
+
+    // Keep token available
     req.accessToken = token;
 
     return next();
