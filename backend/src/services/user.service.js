@@ -79,8 +79,6 @@ class UserService {
 
     const user = await UserModel.findById(userId)
       .populate("auth")
-      .populate("task")
-      .populate("notification");
 
     if (!user) {
       throw new AppError("User not found", 404);
@@ -91,15 +89,13 @@ class UserService {
 
   // Get user by Auth ID
   async getUserByAuthId(authId) {
-    console.log("userIS",authId)
+
     if (!authId) {
       throw new AppError("Auth ID is required", 400);
     }
 
     const user = await UserModel.findOne({ auth: authId })
       .populate("auth")
-      .populate("task")
-      .populate("notification");
 
     if (!user) {
       throw new AppError("User not found", 404);

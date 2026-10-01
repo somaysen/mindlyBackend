@@ -4,7 +4,7 @@ import UserModel from "../models/user.model.js";
 const userMiddleware = async (req, res, next) => {
   try {
     // authMiddleware must run before userMiddleware
-    if (!req.user?.id) {
+    if (!req.auth?.id) {
       return next(
         new AppError("Authentication required", 401)
       );
@@ -12,7 +12,7 @@ const userMiddleware = async (req, res, next) => {
 
     // Find user profile using authenticated user ID
     const user = await UserModel.findOne({
-      auth: req.user.id,
+      auth: req.auth.id,
     }).populate("auth", "-password");
 
     if (!user) {

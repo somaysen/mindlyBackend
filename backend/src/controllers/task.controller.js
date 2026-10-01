@@ -1,16 +1,32 @@
 import taskService from "../services/task.service.js";
+import AppError from "../utils/errors.js";
 
 class TaskController {
   creatingTask = async (req, res, next) => {
     try {
+      const authId = req.auth?.id || req.auth?._id;
+
+      console.log("🔐 req.auth:", req.auth);
+      console.log("🔐 authId:", authId);
+
+      if (!authId) {
+        throw new AppError("Unauthorized", 401);
+      }
+
       const data = await taskService.creatingTask({
-        ...req.body,
-        auth: req.user,
+        auth: authId,
+        taskName: req.body.taskName,
+        description: req.body.description,
+        dueDate: req.body.dueDate,
+        dueTime: req.body.dueTime,
+        priority: req.body.priority,
+        status: req.body.status,
       });
 
-      res.status(201).json({
+      return res.status(201).json({
         success: true,
-        data: data,
+        message: "Task created successfully",
+        data,
       });
     } catch (error) {
       next(error);
@@ -19,15 +35,20 @@ class TaskController {
 
   getAllTasks = async (req, res, next) => {
     try {
+      const authId = req.auth?.id || req.auth?._id;
+
+      if (!authId) {
+        throw new AppError("Unauthorized", 401);
+      }
+
       const data = await taskService.getAllTasks({
-        user: req.user,
+        user: authId,
       });
 
-      res.status(200).json({
+      return res.status(200).json({
         success: true,
-        data: data,
+        data,
       });
-      
     } catch (error) {
       next(error);
     }
@@ -35,18 +56,24 @@ class TaskController {
 
   getTaskByUserId = async (req, res, next) => {
     try {
-      const data = await taskService.getUserById({
-        user: req.user,
+      const authId = req.auth?.id || req.auth?._id;
+
+      if (!authId) {
+        throw new AppError("Unauthorized", 401);
+      }
+
+      const data = await taskService.getAllTasks({
+        user: authId,
       });
 
-      res.status(200).json({
-        success:true,
-        data:data,
-      })
+      return res.status(200).json({
+        success: true,
+        data,
+      });
     } catch (error) {
-      next(error)
+      next(error);
     }
-  }
+  };
 }
 
 export default TaskController;

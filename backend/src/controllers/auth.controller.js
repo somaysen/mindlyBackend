@@ -1,6 +1,7 @@
 import authService from "../services/auth.service.js";
 import config from "../config/env.js";
 import Auth from "../models/auth.model.js";
+import AppError from "../utils/errors.js";
 
 const accessTokenCookieOptions = {
   httpOnly: true,
@@ -11,6 +12,29 @@ const accessTokenCookieOptions = {
 };
 
 class AuthController {
+  refreshToken = async (req, res, next) => {
+    try {
+      const refreshToken = req.cookies?.refreshToken;
+
+      if (!refreshToken) {
+        return res.status(401).json({
+          success: false,
+          message: "Refresh token is required",
+        });
+      }
+
+      const result = await authService.refreshToken(refreshToken);
+
+      return res.status(200).json({
+        success: true,
+        message: "Token refreshed successfully",
+        ...result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   register = async (req, res, next) => {
     try {
       const data = await authService.register(req.body);
@@ -24,7 +48,13 @@ class AuthController {
     try {
       const { token, ...data } = await authService.login(req.body);
       res.cookie("accessToken", token, accessTokenCookieOptions);
-      res.status(200).json({ success: true, data });
+      res.status(200).json({
+        success: true,
+        data: {
+          ...data,
+          token,
+        },
+      });
     } catch (error) {
       next(error);
     }
@@ -33,7 +63,7 @@ class AuthController {
   verifyEmail = async (req, res, next) => {
     try {
       const data = await authService.verifyEmail(
-        req.query.token || req.body.token,
+        req.query?.token || req.body?.token,
       );
 
       res.status(200).json({
@@ -47,40 +77,41 @@ class AuthController {
   };
 
   resendVerification = async (req, res, next) => {
-  try {
-    const { email } = req.body;
+    try {
+      const email = req.body?.email;
 
-    if (!email) {
-      throw new AppError("Email is required", 400);
-    }
+      if (typeof email !== "string" || !email.trim()) {
+        throw new AppError("Email is required", 400);
+      }
 
-    const normalizedEmail = email.trim().toLowerCase();
+      const normalizedEmail = email.trim().toLowerCase();
 
-    const user = await Auth.findOne({
-      email: normalizedEmail,
-    });
+      const user = await Auth.findOne({
+        email: normalizedEmail,
+      });
 
-    // Generic response
-    // Prevents revealing whether an email is registered
-    if (!user || user.isVerified === true) {
+      // Generic response
+      // Prevents revealing whether an email is registered
+      if (!user || user.isVerified === true) {
+        return res.status(200).json({
+          success: true,
+          message:
+            "If the account exists and is not verified, a verification email has been sent.",
+        });
+      }
+
+      await authService.resendVerification(user);
+
       return res.status(200).json({
         success: true,
         message:
           "If the account exists and is not verified, a verification email has been sent.",
       });
+    } catch (error) {
+      console.error("Resend verification error:", error);
+      next(error);
     }
-
-    await authService.resendVerification(user);
-
-    return res.status(200).json({
-      success: true,
-      message: "Verification email sent successfully",
-    });
-  } catch (error) {
-    console.error("Resend verification error:", error);
-    next(error);
-  }
-};
+  };
 
   logout = async (req, res, next) => {
     try {

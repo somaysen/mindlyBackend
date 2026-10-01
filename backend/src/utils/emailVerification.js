@@ -4,7 +4,7 @@ import transporter from "../config/mail.js";
 const sendVerificationEmail = async (user, token) => {
   const verificationUrl = `${config.FRONTEND_URL}/verify-email?token=${encodeURIComponent(token)}`;
 
-  await transporter.sendMail({
+  return transporter.sendMail({
     from: `Mindly <${config.GMAIL_USER}>`,
     to: user.email,
     subject: "Verify your Mindly email address",

@@ -12,7 +12,7 @@ router.post(
 );
 
 router.patch(
-  "./update-notification",
+  "/update-notification",
   authMiddleware,
   UserNotification.updateNotificationSettings,
 );

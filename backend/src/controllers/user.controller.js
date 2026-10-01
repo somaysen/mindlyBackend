@@ -6,9 +6,9 @@ class UserController {
   postUserInfo = async (req, res, next) => {
     try {
       console.log("POST /info-user");
-      console.log("req.user:", req.user);
+      console.log("req.auth:", req.auth);
 
-      const authId = req.user?.id;
+      const authId = req.auth?.id || req.auth?._id;
 
       if (!authId) {
         throw new AppError("Unauthorized", 401);
@@ -35,15 +35,15 @@ class UserController {
   getUserById = async (req, res, next) => {
     try {
       console.log("GET /get-info");
-      console.log("req.user:", req.user);
+      console.log("req.auth:", req.auth);
 
-      const authId = req.user?.id;
+      const authId = req.auth?.id || req.auth?._id;
 
       if (!authId) {
         throw new AppError("Unauthorized", 401);
       }
 
-      console.log("Auth ID:", authId);
+      // console.log("Auth ID:", authId);
 
       const user = await userService.getUserByAuthId(authId);
 

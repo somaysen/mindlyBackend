@@ -33,10 +33,11 @@ export const hashToken = (token) => {
 };
 
 // Create JWT access token
-export const createAccessToken = (user) => {
+export const  createAccessToken = (user) => {
   if (!config.AUTH_TOKEN_SECRET) {
     throw new AppError("AUTH_TOKEN_SECRET is not configured", 500);
   }
+  console.log("userId",user._id)
 
   return jwt.sign(
     {
@@ -122,4 +123,18 @@ export const isAccessTokenBlocked = async (token) => {
   );
 
   return blocked === "1";
+};
+
+export const verifyRefreshToken = (token) => {
+  try {
+    return jwt.verify(
+      token,
+      process.env.JWT_REFRESH_SECRET
+    );
+  } catch (error) {
+    throw new AppError(
+      "Invalid or expired refresh token",
+      401
+    );
+  }
 };

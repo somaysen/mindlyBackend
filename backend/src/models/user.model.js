@@ -25,14 +25,6 @@ const UserSchema = new mongoose.Schema(
         trim: true,
       },
     ],
-    task: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Task",
-    },
-    notification: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Notification",
-    },
   },
   {
     timestamps: true,
