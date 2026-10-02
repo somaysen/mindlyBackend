@@ -5,8 +5,8 @@ class UserController {
   // Create user profile
   postUserInfo = async (req, res, next) => {
     try {
-      console.log("POST /info-user");
-      console.log("req.auth:", req.auth);
+      // console.log("POST /info-user");
+      // console.log("req.auth:", req.auth);
 
       const authId = req.auth?.id || req.auth?._id;
 
@@ -14,7 +14,7 @@ class UserController {
         throw new AppError("Unauthorized", 401);
       }
 
-      console.log("Auth ID:", authId);
+      
 
       const data = await userService.createUser({
         ...req.body,
@@ -34,8 +34,6 @@ class UserController {
   // Get current user
   getUserById = async (req, res, next) => {
     try {
-      console.log("GET /get-info");
-      console.log("req.auth:", req.auth);
 
       const authId = req.auth?.id || req.auth?._id;
 

@@ -11,30 +11,18 @@ const taskController = new TaskController();
 // CREATE TASK
 // ==========================================
 
-router.post(
-  "/create",
-  authMiddleware,
-  taskController.creatingTask
-);
+router.post("/create", authMiddleware, taskController.creatingTask);
 
 // ==========================================
 // GET ALL TASKS
 // ==========================================
 
-router.get(
-  "/",
-  authMiddleware,
-  taskController.getAllTasks
-);
+router.get("/", authMiddleware, taskController.getAllTasks);
 
 // ==========================================
 // GET TASKS BY USER
 // ==========================================
 
-router.get(
-  "/user",
-  authMiddleware,
-  taskController.getTaskByUserId
-);
+router.get("/user", authMiddleware, taskController.getTaskByUserId);
 
 export default router;

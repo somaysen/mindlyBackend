@@ -11,6 +11,11 @@ const accessTokenCookieOptions = {
   path: "/",
 };
 
+const refreshTokenCookieOptions = {
+  ...accessTokenCookieOptions,
+  maxAge: config.JWT_REFRESH_TTL_DAYS * 24 * 60 * 60 * 1000,
+};
+
 class AuthController {
   refreshToken = async (req, res, next) => {
     try {
@@ -23,12 +28,13 @@ class AuthController {
         });
       }
 
-      const result = await authService.refreshToken(refreshToken);
+      const { accessToken } = await authService.refreshToken(refreshToken);
+      res.cookie("accessToken", accessToken, accessTokenCookieOptions);
 
       return res.status(200).json({
         success: true,
         message: "Token refreshed successfully",
-        ...result,
+        accessToken,
       });
     } catch (error) {
       next(error);
@@ -46,8 +52,9 @@ class AuthController {
 
   login = async (req, res, next) => {
     try {
-      const { token, ...data } = await authService.login(req.body);
+      const { token, refreshToken, ...data } = await authService.login(req.body);
       res.cookie("accessToken", token, accessTokenCookieOptions);
+      res.cookie("refreshToken", refreshToken, refreshTokenCookieOptions);
       res.status(200).json({
         success: true,
         data: {
@@ -62,14 +69,16 @@ class AuthController {
 
   verifyEmail = async (req, res, next) => {
     try {
-      const data = await authService.verifyEmail(
+      const { token, refreshToken, ...data } = await authService.verifyEmail(
         req.query?.token || req.body?.token,
       );
+      res.cookie("accessToken", token, accessTokenCookieOptions);
+      res.cookie("refreshToken", refreshToken, refreshTokenCookieOptions);
 
       res.status(200).json({
         success: true,
         message: "Email verified successfully",
-        data,
+        data: { ...data, token },
       });
     } catch (error) {
       next(error);
@@ -117,6 +126,7 @@ class AuthController {
     try {
       const data = await authService.logout(req.accessToken);
       res.clearCookie("accessToken", accessTokenCookieOptions);
+      res.clearCookie("refreshToken", refreshTokenCookieOptions);
       res.status(200).json({ success: true, ...data });
     } catch (error) {
       next(error);

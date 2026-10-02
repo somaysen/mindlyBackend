@@ -6,6 +6,7 @@ import sendVerificationEmail from "../utils/emailVerification.js";
 import {
   blockAccessToken,
   createAccessToken,
+  createRefreshToken,
   createVerificationToken,
   hashToken,
   verifyAccessToken,
@@ -135,6 +136,7 @@ class AuthService {
 
     return {
       token: createAccessToken(user),
+      refreshToken: createRefreshToken(user),
 
       user: {
         ...toSafeUser(user),
@@ -261,6 +263,7 @@ class AuthService {
 
     return {
       token: createAccessToken(user),
+      refreshToken: createRefreshToken(user),
 
       user: {
         ...toSafeUser(user),

@@ -52,6 +52,18 @@ export const  createAccessToken = (user) => {
   );
 };
 
+export const createRefreshToken = (user) => {
+  if (!config.JWT_REFRESH_SECRET) {
+    throw new AppError("JWT_REFRESH_SECRET is not configured", 500);
+  }
+
+  return jwt.sign(
+    { id: user._id.toString() },
+    config.JWT_REFRESH_SECRET,
+    { expiresIn: `${config.JWT_REFRESH_TTL_DAYS}d` },
+  );
+};
+
 // Save access token in HTTP-only cookie
 export const setAccessTokenCookie = (res, token) => {
   if (!res || !token) {
@@ -126,12 +138,14 @@ export const isAccessTokenBlocked = async (token) => {
 };
 
 export const verifyRefreshToken = (token) => {
+  if (!config.JWT_REFRESH_SECRET) {
+    throw new AppError("JWT_REFRESH_SECRET is not configured", 500);
+  }
+
   try {
-    return jwt.verify(
-      token,
-      process.env.JWT_REFRESH_SECRET
-    );
+    return jwt.verify(token, config.JWT_REFRESH_SECRET);
   } catch (error) {
+    if (error instanceof AppError) throw error;
     throw new AppError(
       "Invalid or expired refresh token",
       401

@@ -34,6 +34,9 @@ const config = {
     AUTH_TOKEN_SECRET: process.env.AUTH_TOKEN_SECRET,
     AUTH_TOKEN_TTL_HOURS:
         Number(process.env.AUTH_TOKEN_TTL_HOURS) || 24,
+    JWT_REFRESH_SECRET:
+        process.env.JWT_REFRESH_SECRET || process.env.AUTH_TOKEN_SECRET,
+    JWT_REFRESH_TTL_DAYS: Number(process.env.JWT_REFRESH_TTL_DAYS) || 30,
 
     // Gmail
     GMAIL_USER: process.env.GMAIL_USER,
