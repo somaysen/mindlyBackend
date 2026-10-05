@@ -8,6 +8,10 @@ const UserSchema = new mongoose.Schema(
       required: true,
       unique: true,
     },
+    avatar: {
+      type: String,
+      trim: true,
+    },
     name: {
       type: String,
       trim: true,

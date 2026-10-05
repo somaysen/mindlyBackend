@@ -7,21 +7,15 @@ const router = express.Router();
 
 const taskController = new TaskController();
 
-// ==========================================
 // CREATE TASK
-// ==========================================
 
 router.post("/create", authMiddleware, taskController.creatingTask);
 
-// ==========================================
 // GET ALL TASKS
-// ==========================================
 
 router.get("/", authMiddleware, taskController.getAllTasks);
 
-// ==========================================
 // GET TASKS BY USER
-// ==========================================
 
 router.get("/user", authMiddleware, taskController.getTaskByUserId);
 

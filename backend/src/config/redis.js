@@ -5,7 +5,11 @@ import logger from "../utils/logger.js";
 const redisClient = new Redis(config.REDIS_URL, {
   password: config.REDIS_PASSWORD || undefined,
   lazyConnect: true,
-  retryStrategy: () => null,
+  // Keep reconnecting after transient network failures such as ECONNRESET.
+  retryStrategy: (attempt) => Math.min(attempt * 500, 5000),
+  // Fail requests promptly while the client reconnects in the background.
+  maxRetriesPerRequest: 1,
+  enableOfflineQueue: false,
 });
 
 redisClient.on("error", (error) => {

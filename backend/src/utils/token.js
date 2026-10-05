@@ -5,6 +5,7 @@ import { getRedisClient } from "../config/redis.js";
 import AppError from "./errors.js";
 
 const verificationLifetimeMs = 15 * 60 * 1000;
+const locallyBlockedTokens = new Map();
 
 // Generate a random email verification token
 export const createVerificationToken = () => {
@@ -117,24 +118,69 @@ export const blockAccessToken = async (token) => {
     return false;
   }
 
-  await getRedisClient().set(
-    `blocked_token:${jti}`,
-    "1",
-    "EX",
-    remainingSeconds
-  );
+  const redis = getAvailableRedisClient();
+
+  if (!redis) {
+    const expiresAt = Date.now() + remainingSeconds * 1000;
+
+    for (const [blockedJti, blockedUntil] of locallyBlockedTokens) {
+      if (blockedUntil <= Date.now()) locallyBlockedTokens.delete(blockedJti);
+    }
+
+    locallyBlockedTokens.set(jti, expiresAt);
+    return true;
+  }
+
+  try {
+    await redis.set(
+      `blocked_token:${jti}`,
+      "1",
+      "EX",
+      remainingSeconds
+    );
+  } catch {
+    throw new AppError("Authentication service temporarily unavailable", 503);
+  }
 
   return true;
 };
 
 export const isAccessTokenBlocked = async (token) => {
   const { jti } = getDecodedAccessToken(token);
+  const redis = getAvailableRedisClient();
 
-  const blocked = await getRedisClient().get(
-    `blocked_token:${jti}`
-  );
+  if (!redis) {
+    const expiresAt = locallyBlockedTokens.get(jti);
 
-  return blocked === "1";
+    if (!expiresAt) return false;
+    if (expiresAt <= Date.now()) {
+      locallyBlockedTokens.delete(jti);
+      return false;
+    }
+
+    return true;
+  }
+
+  try {
+    const blocked = await redis.get(`blocked_token:${jti}`);
+    return blocked === "1";
+  } catch {
+    throw new AppError("Authentication service temporarily unavailable", 503);
+  }
+};
+
+const getAvailableRedisClient = () => {
+  const redis = getRedisClient();
+
+  if (config.SKIP_REDIS) {
+    return null;
+  }
+
+  if (redis.status !== "ready") {
+    throw new AppError("Authentication service temporarily unavailable", 503);
+  }
+
+  return redis;
 };
 
 export const verifyRefreshToken = (token) => {
