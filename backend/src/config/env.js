@@ -19,7 +19,9 @@ const config = {
     MONGODB:
         process.env.MONGO_URI ||
         process.env.MONGODB ||
-        "mongodb://localhost:27017/mindly",
+        (process.env.NODE_ENV === "production"
+            ? undefined
+            : "mongodb://127.0.0.1:27017/mindly"),
 
     SKIP_DB: asBoolean(process.env.SKIP_DB),
 
