@@ -6,9 +6,6 @@ class TaskController {
     try {
       const authId = req.auth?.id || req.auth?._id;
 
-      console.log("🔐 req.auth:", req.auth);
-      console.log("🔐 authId:", authId);
-
       if (!authId) {
         throw new AppError("Unauthorized", 401);
       }

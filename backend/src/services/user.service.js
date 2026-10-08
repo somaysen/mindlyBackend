@@ -13,8 +13,6 @@ class UserService {
       notificationId,
     } = userData;
 
-     console.log(userData);
-
     // Validate Auth ID
     if (!auth) {
       throw new AppError("Auth ID is required", 400);
@@ -78,7 +76,7 @@ class UserService {
     }
 
     const user = await UserModel.findById(userId)
-      .populate("auth")
+      .populate("auth", "email isVerified")
 
     if (!user) {
       throw new AppError("User not found", 404);
@@ -95,7 +93,7 @@ class UserService {
     }
 
     const user = await UserModel.findOne({ auth: authId })
-      .populate("auth")
+      .populate("auth", "email isVerified")
 
     if (!user) {
       throw new AppError("User not found", 404);

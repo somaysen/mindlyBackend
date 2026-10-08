@@ -51,6 +51,10 @@ const config = {
     // Frontend
     FRONTEND_URL:
         process.env.FRONTEND_URL || "http://localhost:3000",
+    CORS_ORIGINS: (process.env.CORS_ORIGINS || "")
+        .split(",")
+        .map((origin) => origin.trim())
+        .filter(Boolean),
 
     // Rate limiting
     RATE_LIMIT_WINDOW_MS:

@@ -4,16 +4,11 @@ import Notification from "../models/notificaton.model.js";
 class NotificationService {
   // Get notification settings
   getNotificationSettings = async (userId) => {
-    let settings = await Notification.findOne({
-      user: userId,
-    });
-
-    // Create default settings if they don't exist
-    if (!settings) {
-      settings = await Notification.create({
-        user: userId,
-      });
-    }
+    const settings = await Notification.findOneAndUpdate(
+      { user: userId },
+      { $setOnInsert: { user: userId } },
+      { new: true, upsert: true, setDefaultsOnInsert: true },
+    );
 
     return {
       notificationId: settings._id,
@@ -45,12 +40,21 @@ class NotificationService {
         data.weeklyReflections;
     }
 
+    if (typeof data.emailNotifications === "boolean") {
+      allowedData["emailNotifications.enabled"] = data.emailNotifications;
+    }
+
+    if (typeof data.pushNotifications === "boolean") {
+      allowedData["pushNotifications.enabled"] = data.pushNotifications;
+    }
+
     const settings = await Notification.findOneAndUpdate(
       {
         user: userId,
       },
       {
         $set: allowedData,
+        $setOnInsert: { user: userId },
       },
       {
         new: true,

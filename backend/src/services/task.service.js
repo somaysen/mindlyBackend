@@ -1,5 +1,6 @@
 import AppError from "../utils/errors.js";
 import TaskModel from "../models/task.model.js";
+import logger from "../utils/logger.js";
 
 class TaskService {
   // ==========================================
@@ -56,7 +57,7 @@ class TaskService {
 
       return task;
     } catch (error) {
-      console.error("❌ Create Task Error:", error);
+      logger.error(`Create task failed: ${error.message}`);
 
       // Already AppError
       if (error instanceof AppError) {
@@ -105,10 +106,14 @@ class TaskService {
 
       return tasks;
     } catch (error) {
-      console.error("❌ Get All Tasks Error:", error);
+      logger.error(`Get tasks failed: ${error.message}`);
 
       if (error instanceof AppError) {
         throw error;
+      }
+
+      if (error.name === "CastError") {
+        throw new AppError(`Invalid ${error.path}`, 400);
       }
 
       throw new AppError("Failed to get tasks", 500);

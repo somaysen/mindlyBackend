@@ -4,7 +4,7 @@ const notificationSchema = new mongoose.Schema(
   {
     user: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      ref: "Auth",
       required: true,
       unique: true,
       index: true,

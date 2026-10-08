@@ -1,16 +1,27 @@
-const allowedOrigins = [
-  'http://localhost:3000',
-];
+import config from "./env.js";
+
+const configuredFrontendOrigin = (() => {
+  try {
+    return new URL(config.FRONTEND_URL).origin;
+  } catch {
+    return null;
+  }
+})();
+
+const allowedOrigins = new Set([
+  configuredFrontendOrigin,
+  ...config.CORS_ORIGINS,
+].filter(Boolean));
 
 export const corsOptions = {
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
 
-    if (origin.startsWith('http://localhost:')) {
+    if (/^https?:\/\/localhost:\d+$/.test(origin)) {
       return callback(null, true);
     }
 
-    if (allowedOrigins.includes(origin)) {
+    if (allowedOrigins.has(origin)) {
       return callback(null, true);
     }
 

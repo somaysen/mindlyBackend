@@ -38,8 +38,6 @@ export const  createAccessToken = (user) => {
   if (!config.AUTH_TOKEN_SECRET) {
     throw new AppError("AUTH_TOKEN_SECRET is not configured", 500);
   }
-  console.log("userId",user._id)
-
   return jwt.sign(
     {
       sub: user._id.toString(),

@@ -24,15 +24,9 @@ const userMiddleware = async (req, res, next) => {
     // Attach complete user profile to request
     req.user = user;
 
-    console.log("User:", req.user);
-
     return next();
   } catch (error) {
-    console.error("User Middleware Error:", error);
-
-    return next(
-      new AppError("Failed to authenticate user", 500)
-    );
+    return next(error);
   }
 };
 

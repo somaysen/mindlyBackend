@@ -117,7 +117,6 @@ class AuthController {
           "If the account exists and is not verified, a verification email has been sent.",
       });
     } catch (error) {
-      console.error("Resend verification error:", error);
       next(error);
     }
   };

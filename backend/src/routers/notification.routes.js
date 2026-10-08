@@ -17,4 +17,6 @@ router.patch(
   UserNotification.updateNotificationSettings,
 );
 
+router.get("/settings", authMiddleware, UserNotification.getNotificationSettings);
+
 export default router;
