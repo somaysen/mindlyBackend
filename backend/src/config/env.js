@@ -1,6 +1,10 @@
 import dotenv from "dotenv";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
-dotenv.config();
+// Resolve the backend .env from this file so startup works from any cwd.
+const envPath = resolve(dirname(fileURLToPath(import.meta.url)), "../../.env");
+dotenv.config({ path: envPath });
 
 const asBoolean = (value) => {
     return String(value).toLowerCase() === "true";
