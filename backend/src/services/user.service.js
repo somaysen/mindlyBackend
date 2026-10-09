@@ -2,7 +2,10 @@ import UserModel from "../models/user.model.js";
 import AppError from "../utils/errors.js";
 
 class UserService {
-  // Create or update user profile
+  /**
+   * Create or update a user profile.
+   * Handles concurrent requests and duplicate-key errors.
+   */
   async createUser(userData = {}) {
     const {
       auth,
@@ -13,13 +16,13 @@ class UserService {
       notificationId,
     } = userData;
 
-    // Validate Auth ID
+    // Validate authentication ID
     if (!auth) {
       throw new AppError("Auth ID is required", 400);
     }
 
     // Validate name
-    if (!name || typeof name !== "string" || !name.trim()) {
+    if (typeof name !== "string" || !name.trim()) {
       throw new AppError("Name is required", 400);
     }
 
@@ -33,50 +36,89 @@ class UserService {
       throw new AppError("Planning must be an array", 400);
     }
 
-    // Check if user profile already exists
-    const existingUser = await UserModel.findOne({ auth });
-
-    // If user already exists, update it instead of creating duplicate
-    if (existingUser) {
-      existingUser.name = name.trim();
-      existingUser.interests = interests;
-      existingUser.planning = planning;
-
-      // Only update these if values were provided
-      if (taskId) {
-        existingUser.task = taskId;
-      }
-
-      if (notificationId) {
-        existingUser.notification = notificationId;
-      }
-
-      await existingUser.save();
-
-      return existingUser;
-    }
-
-    // Create new user profile
-    const user = await UserModel.create({
-      auth,
+    // Build the fields that should be updated
+    const updateFields = {
       name: name.trim(),
       interests,
       planning,
-      task: taskId || undefined,
-      notification: notificationId || undefined,
-    });
+    };
 
-    return user;
+    // Do not erase existing references when IDs are omitted
+    if (taskId !== undefined && taskId !== null) {
+      updateFields.task = taskId;
+    }
+
+    if (notificationId !== undefined && notificationId !== null) {
+      updateFields.notification = notificationId;
+    }
+
+    try {
+      // Atomic upsert: update an existing profile or create one
+      const user = await UserModel.findOneAndUpdate(
+        { auth },
+        {
+          $set: updateFields,
+          $setOnInsert: { auth },
+        },
+        {
+          new: true,
+          upsert: true,
+          runValidators: true,
+          setDefaultsOnInsert: true,
+        }
+      );
+
+      if (!user) {
+        throw new AppError("Unable to create or update user profile", 500);
+      }
+
+      return user;
+    } catch (error) {
+      // Recover when concurrent requests create the same auth profile
+      if (error.code === 11000) {
+        const existingUser = await UserModel.findOneAndUpdate(
+          { auth },
+          { $set: updateFields },
+          {
+            new: true,
+            upsert: false,
+            runValidators: true,
+          }
+        );
+
+        if (existingUser) {
+          return existingUser;
+        }
+
+        // A different unique field may have caused the conflict.
+        throw new AppError(
+          "A record with this value already exists",
+          409
+        );
+      }
+
+      // Preserve known application errors
+      if (error instanceof AppError) {
+        throw error;
+      }
+
+      // Let the centralized error handler handle unexpected errors
+      throw error;
+    }
   }
 
-  // Get user by ID
+  /**
+   * Get a user profile by profile ID.
+   */
   async getUserById(userId) {
     if (!userId) {
       throw new AppError("User ID is required", 400);
     }
 
-    const user = await UserModel.findById(userId)
-      .populate("auth", "email isVerified")
+    const user = await UserModel.findById(userId).populate(
+      "auth",
+      "email isVerified"
+    );
 
     if (!user) {
       throw new AppError("User not found", 404);
@@ -85,15 +127,17 @@ class UserService {
     return user;
   }
 
-  // Get user by Auth ID
+  /**
+   * Get a user profile by authentication ID.
+   */
   async getUserByAuthId(authId) {
-
     if (!authId) {
       throw new AppError("Auth ID is required", 400);
     }
 
-    const user = await UserModel.findOne({ auth: authId })
-      .populate("auth", "email isVerified")
+    const user = await UserModel.findOne({
+      auth: authId,
+    }).populate("auth", "email isVerified");
 
     if (!user) {
       throw new AppError("User not found", 404);
@@ -102,7 +146,9 @@ class UserService {
     return user;
   }
 
-  // Update interests
+  /**
+   * Update user interests.
+   */
   async updateInterests(userId, interests = []) {
     if (!userId) {
       throw new AppError("User ID is required", 400);
@@ -115,9 +161,7 @@ class UserService {
     const user = await UserModel.findByIdAndUpdate(
       userId,
       {
-        $set: {
-          interests,
-        },
+        $set: { interests },
       },
       {
         new: true,
