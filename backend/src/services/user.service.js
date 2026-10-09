@@ -76,18 +76,28 @@ class UserService {
     } catch (error) {
       // Recover when concurrent requests create the same auth profile
       if (error.code === 11000) {
-        const existingUser = await UserModel.findOneAndUpdate(
-          { auth },
-          { $set: updateFields },
-          {
-            new: true,
-            upsert: false,
-            runValidators: true,
-          }
-        );
+        // The winning upsert may not be visible to the retry immediately.
+        // Retry briefly so concurrent profile submissions stay idempotent.
+        const retryDelays = [0, 10, 25];
 
-        if (existingUser) {
-          return existingUser;
+        for (const delay of retryDelays) {
+          if (delay) {
+            await new Promise((resolve) => setTimeout(resolve, delay));
+          }
+
+          const existingUser = await UserModel.findOneAndUpdate(
+            { auth },
+            { $set: updateFields },
+            {
+              new: true,
+              upsert: false,
+              runValidators: true,
+            }
+          );
+
+          if (existingUser) {
+            return existingUser;
+          }
         }
 
         // A different unique field may have caused the conflict.
