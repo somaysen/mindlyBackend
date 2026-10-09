@@ -61,7 +61,7 @@ class UserService {
           $setOnInsert: { auth },
         },
         {
-          new: true,
+          returnDocument: "after",
           upsert: true,
           runValidators: true,
           setDefaultsOnInsert: true,
@@ -89,7 +89,7 @@ class UserService {
             { auth },
             { $set: updateFields },
             {
-              new: true,
+              returnDocument: "after",
               upsert: false,
               runValidators: true,
             }
@@ -174,7 +174,7 @@ class UserService {
         $set: { interests },
       },
       {
-        new: true,
+        returnDocument: "after",
         runValidators: true,
       }
     );

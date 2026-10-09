@@ -144,7 +144,7 @@ class AuthService {
         },
       },
       {
-        new: true,
+        returnDocument: "after",
       },
     );
 

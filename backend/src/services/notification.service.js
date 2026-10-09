@@ -7,7 +7,7 @@ class NotificationService {
     const settings = await Notification.findOneAndUpdate(
       { user: userId },
       { $setOnInsert: { user: userId } },
-      { new: true, upsert: true, setDefaultsOnInsert: true },
+      { returnDocument: "after", upsert: true, setDefaultsOnInsert: true },
     );
 
     return {
@@ -57,7 +57,7 @@ class NotificationService {
         $setOnInsert: { user: userId },
       },
       {
-        new: true,
+        returnDocument: "after",
         upsert: true,
         runValidators: true,
         setDefaultsOnInsert: true,
