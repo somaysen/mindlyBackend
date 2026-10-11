@@ -18,7 +18,23 @@ const connectDB = async () => {
 
     connectionPromise = mongoose
       .connect(mongoURI, { serverSelectionTimeoutMS: 10000 })
-      .then(() => {
+      .then(async () => {
+        const usersCollection = mongoose.connection.db.collection("users");
+        const indexes = await usersCollection.indexes();
+        const obsoleteEmailIndex = indexes.find(
+          (index) =>
+            index.unique === true &&
+            index.key?.email === 1 &&
+            Object.keys(index.key).length === 1,
+        );
+
+        if (obsoleteEmailIndex) {
+          await usersCollection.dropIndex(obsoleteEmailIndex.name);
+          logger.warn(
+            `Removed obsolete unique index ${obsoleteEmailIndex.name} from users collection`,
+          );
+        }
+
         logger.info("MongoDB connected successfully");
         return mongoose.connection;
       })
