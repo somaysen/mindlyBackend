@@ -18,6 +18,12 @@ const connectDB = async () => {
     );
   }
 
+  if (!/^mongodb(?:\+srv)?:\/\//i.test(mongoURI)) {
+    throw new Error(
+      "Invalid MongoDB URI. Set MONGO_URI (or MONGODB) to a connection string starting with mongodb:// or mongodb+srv://."
+    );
+  }
+
   if (!connectionPromise) {
     connectionPromise = mongoose
       .connect(mongoURI)
