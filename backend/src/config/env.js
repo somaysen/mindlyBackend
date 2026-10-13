@@ -2,24 +2,25 @@ import dotenv from "dotenv";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const envPath = resolve(dirname(fileURLToPath(import.meta.url)), "../../.env");
+const currentDir = dirname(fileURLToPath(import.meta.url));
+const envPath = resolve(currentDir, "../../.env");
+
 dotenv.config({ path: envPath });
 
 const asBoolean = (value) => String(value).toLowerCase() === "true";
 const redisHost = process.env.REDIS_HOST || "localhost";
 const redisPort = Number(process.env.REDIS_PORT) || 6379;
 const authTokenSecret = process.env.AUTH_TOKEN_SECRET || process.env.JWT_SECRET;
+const corsOrigins = (process.env.CORS_ORIGINS || process.env.ALLOWED_ORIGINS || "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
 const config = {
-  PORT: Number(process.env.PORT) || 3000,
+  PORT: Number(process.env.PORT) || 9000,
   NODE_ENV: process.env.NODE_ENV || "development",
 
-  MONGODB:
-    process.env.MONGO_URI ||
-    process.env.MONGODB ||
-    (process.env.NODE_ENV === "production"
-      ? undefined
-      : "mongodb://127.0.0.1:27017/mindly"),
+  MONGO_URI: (process.env.MONGO_URI || process.env.MONGODB)?.trim(),
   SKIP_DB: asBoolean(process.env.SKIP_DB),
 
   REDIS_HOST: redisHost,
@@ -31,23 +32,17 @@ const config = {
   AUTH_TOKEN_SECRET: authTokenSecret,
   AUTH_TOKEN_TTL_HOURS: Number(process.env.AUTH_TOKEN_TTL_HOURS) || 24,
   JWT_REFRESH_SECRET:
-    process.env.JWT_REFRESH_SECRET ||
-    process.env.REFRESH_SECRET ||
-    authTokenSecret,
+    process.env.JWT_REFRESH_SECRET || process.env.REFRESH_SECRET || authTokenSecret,
   JWT_REFRESH_TTL_DAYS: Number(process.env.JWT_REFRESH_TTL_DAYS) || 30,
 
   GMAIL_USER: process.env.GMAIL_USER,
   GMAIL_APP_PASSWORD: process.env.GMAIL_APP_PASSWORD,
 
-  FRONTEND_URL: process.env.FRONTEND_URL || "http://localhost:3000",
-  CORS_ORIGINS: (
-    process.env.CORS_ORIGINS ||
-    process.env.ALLOWED_ORIGINS ||
-    ""
-  )
-    .split(",")
-    .map((origin) => origin.trim())
-    .filter(Boolean),
+  FRONTEND_URL:
+    process.env.FRONTEND_URL || "http://localhost:3000",
+
+  CORS_ORIGINS: corsOrigins,
+  ALLOWED_ORIGINS: corsOrigins,
 
   RATE_LIMIT_WINDOW_MS: Number(process.env.RATE_LIMIT_WINDOW_MS) || 900000,
   RATE_LIMIT_MAX_REQUESTS: Number(process.env.RATE_LIMIT_MAX_REQUESTS) || 100,
