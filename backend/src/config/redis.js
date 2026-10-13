@@ -11,6 +11,7 @@ const redisClient = new Redis(config.REDIS_URL, {
   maxRetriesPerRequest: 1,
   enableOfflineQueue: false,
 });
+let connectionPromise;
 
 redisClient.on("error", (error) => {
   logger.error(`Redis connection error: ${error.message}`);
@@ -30,13 +31,17 @@ export async function connectRedis() {
     return redisClient;
   }
 
-  try {
-    await redisClient.connect();
-    return redisClient;
-  } catch (error) {
-    logger.error(`Failed to connect to Redis: ${error.message}`);
-    throw error;
+  if (!connectionPromise) {
+    connectionPromise = redisClient.connect()
+      .then(() => redisClient)
+      .catch((error) => {
+        connectionPromise = null;
+        logger.error(`Failed to connect to Redis: ${error.message}`);
+        throw error;
+      });
   }
+
+  return connectionPromise;
 }
 
 export const getRedisClient = () => redisClient;

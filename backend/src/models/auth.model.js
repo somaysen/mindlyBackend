@@ -10,6 +10,7 @@ const authSchema = new mongoose.Schema(
       index: true,
       lowercase: true,
       trim: true,
+      maxLength: 254,
     },
 
     password: {

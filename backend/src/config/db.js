@@ -14,13 +14,13 @@ const connectDB = async () => {
 
   if (!mongoURI) {
     throw new Error(
-      "MongoDB URI is not configured. Check backend/.env and MONGO_URI."
+      "MongoDB URI is not configured. Set MONGO_URI, MONGODB_URI, or MONGODB."
     );
   }
 
   if (!/^mongodb(?:\+srv)?:\/\//i.test(mongoURI)) {
     throw new Error(
-      "Invalid MongoDB URI. Set MONGO_URI (or MONGODB) to a connection string starting with mongodb:// or mongodb+srv://."
+      "Invalid MongoDB URI. Set MONGO_URI, MONGODB_URI, or MONGODB to a connection string starting with mongodb:// or mongodb+srv://."
     );
   }
 

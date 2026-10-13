@@ -16,6 +16,11 @@ import {
 
 const normalizeEmail = (email) =>
   typeof email === "string" ? email.trim().toLowerCase() : null;
+const isValidEmail = (email) =>
+  typeof email === "string" &&
+  email.length <= 254 &&
+  /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+const passwordByteLength = (password) => Buffer.byteLength(password, "utf8");
 
 const toSafeUser = (user) => ({
   id: user._id,
@@ -75,13 +80,12 @@ class AuthService {
     const email = normalizeEmail(userData.email);
     const { password } = userData;
 
-    if (
-      typeof email !== "string" ||
-      !email ||
-      typeof password !== "string" ||
-      !password
-    ) {
-      throw new AppError("Email and password are required", 400);
+    if (!isValidEmail(email) || typeof password !== "string") {
+      throw new AppError("A valid email and password are required", 400);
+    }
+
+    if (password.length < 8 || passwordByteLength(password) > 72) {
+      throw new AppError("Password must be at least 8 characters and no more than 72 bytes", 400);
     }
 
     const existingUser = await Auth.findOne({ email });
@@ -292,7 +296,8 @@ class AuthService {
     if (
       !email ||
       typeof password !== "string" ||
-      !password
+      !password ||
+      passwordByteLength(password) > 72
     ) {
       throw new AppError(
         "Email and password are required",

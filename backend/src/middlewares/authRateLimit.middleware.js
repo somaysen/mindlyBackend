@@ -1,0 +1,65 @@
+import config from "../config/env.js";
+import { getRedisClient } from "../config/redis.js";
+import AppError from "../utils/errors.js";
+
+const developmentBuckets = new Map();
+const windowSeconds = Math.ceil(config.RATE_LIMIT_WINDOW_MS / 1000);
+
+const authRateLimit = async (req, res, next) => {
+  const clientKey = encodeURIComponent(req.ip || req.socket.remoteAddress || "unknown");
+  const routeKey = encodeURIComponent(req.path);
+  const key = `rate_limit:auth:${routeKey}:${clientKey}`;
+
+  try {
+    let count;
+    const redis = getRedisClient();
+
+    if (config.SKIP_REDIS && config.NODE_ENV !== "production") {
+      const now = Date.now();
+      const bucket = developmentBuckets.get(key);
+
+      if (!bucket || bucket.expiresAt <= now) {
+        developmentBuckets.set(key, {
+          count: 1,
+          expiresAt: now + config.RATE_LIMIT_WINDOW_MS,
+        });
+        count = 1;
+      } else {
+        bucket.count += 1;
+        count = bucket.count;
+      }
+    } else {
+      if (redis.status !== "ready") {
+        throw new AppError("Authentication service temporarily unavailable", 503);
+      }
+
+      count = await redis.eval(
+        "local count = redis.call('INCR', KEYS[1]); if count == 1 then redis.call('EXPIRE', KEYS[1], ARGV[1]); end; return count",
+        1,
+        key,
+        windowSeconds,
+      );
+    }
+
+    if (count > config.AUTH_RATE_LIMIT_MAX_REQUESTS) {
+      const retryAfter = config.SKIP_REDIS
+        ? Math.max(
+            1,
+            Math.ceil(
+              ((developmentBuckets.get(key)?.expiresAt || Date.now()) - Date.now()) /
+                1000,
+            ),
+          )
+        : Math.max(1, Number(await redis.ttl(key)) || windowSeconds);
+
+      res.set("Retry-After", String(retryAfter));
+      return next(new AppError("Too many authentication requests. Try again later.", 429));
+    }
+
+    return next();
+  } catch (error) {
+    return next(error);
+  }
+};
+
+export default authRateLimit;

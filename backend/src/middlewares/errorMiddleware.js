@@ -34,10 +34,11 @@ const errorMiddleware = (err, req, res, next) => {
   }
 
   if (statusCode >= 500) {
-    logger.error(`${req.method} ${req.originalUrl}: ${err?.stack || message}`);
-    if (!(err?.statusCode || err?.status)) message = "Internal Server Error";
+    // Query strings can contain one-time verification tokens. Never log them.
+    logger.error(`${req.method} ${req.path}: ${err?.stack || message}`);
+    message = "Internal Server Error";
   } else {
-    logger.warn(`${req.method} ${req.originalUrl}: ${message}`);
+    logger.warn(`${req.method} ${req.path}: ${message}`);
   }
 
   return res.status(statusCode).json({ success: false, message });
