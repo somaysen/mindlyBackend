@@ -6,6 +6,7 @@ import authRouter from "./routers/auth.routes.js";
 import userRoute from "./routers/user.routes.js";
 import TaskRouter from "./routers/task.routes.js";
 import NotificationRoute from "./routers/notification.routes.js";
+import ProjectRoute from "./routers/project.routes.js";
 
 import errorMiddleware from "./middlewares/errorMiddleware.js";
 import { corsOptions } from "./config/corsOptions.js";
@@ -88,17 +89,14 @@ app.use("/api/auth", authRouter);
 app.use("/api/user", userRoute);
 app.use("/api/task", TaskRouter);
 app.use("/api/notification", NotificationRoute);
+app.use("/api/project", ProjectRoute);
+
 
 app.use((req, res, next) => {
   const error = new Error(`Route not found: ${req.method} ${req.originalUrl}`);
   error.statusCode = 404;
   next(error);
 });
-
-// ==========================
-// Error Middleware
-// MUST BE LAST
-// ==========================
 
 app.use(errorMiddleware);
 
