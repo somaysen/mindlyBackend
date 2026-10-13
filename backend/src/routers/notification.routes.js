@@ -1,22 +1,22 @@
 import express from "express";
 
-import UserNotification from "../controllers/notificaton.controller.js";
-import authMiddleware from "../middlewares/auth.middlewar.js";
+import notificationController from "../controllers/notification.controller.js";
+import authMiddleware from "../middlewares/auth.middleware.js";
 
 const router = express.Router();
 
 router.post(
   "/create-notification",
   authMiddleware,
-  UserNotification.permissionNotification,
+  notificationController.updateNotificationSettings,
 );
 
 router.patch(
   "/update-notification",
   authMiddleware,
-  UserNotification.updateNotificationSettings,
+  notificationController.updateNotificationSettings,
 );
 
-router.get("/settings", authMiddleware, UserNotification.getNotificationSettings);
+router.get("/settings", authMiddleware, notificationController.getNotificationSettings);
 
 export default router;

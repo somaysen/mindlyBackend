@@ -174,52 +174,23 @@ class AuthService {
   // =========================
 
   async resendVerification(email) {
-    // Check email configuration
-    if (
-      !config.GMAIL_USER ||
-      !config.GMAIL_APP_PASSWORD
-    ) {
-      logger.error("Gmail configuration is missing");
-
-      throw new AppError(
-        "Email service is not configured",
-        503,
-      );
-    }
-
     const normalizedEmail = normalizeEmail(email);
 
     if (!normalizedEmail) {
       throw new AppError("Email is required", 400);
     }
 
-    // Find user by email
-    const user = await Auth.findOne({
-      email: normalizedEmail,
-    });
+    const user = await Auth.findOne({ email: normalizedEmail });
 
-    if (!user) {
-      throw new AppError("User not found", 404);
+    // Use one response for unknown, verified, and unverified addresses.
+    if (user && !user.isVerified) {
+      await this.sendVerificationEmail(user);
+      logger.info(`Verification email resent successfully to ${user.email}`);
     }
-
-    // Already verified
-    if (user.isVerified) {
-      throw new AppError(
-        "Email is already verified",
-        400,
-      );
-    }
-
-    // Send a new verification email
-    await this.sendVerificationEmail(user);
-
-    logger.info(
-      `Verification email resent successfully to ${user.email}`,
-    );
 
     return {
-      email: user.email,
-      message: "Verification email sent successfully",
+      message:
+        "If the account exists and is not verified, a verification email has been sent.",
     };
   }
 

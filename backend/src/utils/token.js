@@ -63,31 +63,6 @@ export const createRefreshToken = (user) => {
   );
 };
 
-// Save access token in HTTP-only cookie
-export const setAccessTokenCookie = (res, token) => {
-  if (!res || !token) {
-    throw new AppError("Response and access token are required", 500);
-  }
-
-  res.cookie("accessToken", token, {
-    httpOnly: true,
-    secure: config.NODE_ENV === "production",
-    sameSite: config.NODE_ENV === "production" ? "none" : "lax",
-    maxAge: config.AUTH_TOKEN_TTL_HOURS * 60 * 60 * 1000,
-    path: "/",
-  });
-};
-
-// Remove access token cookie
-export const clearAccessTokenCookie = (res) => {
-  res.clearCookie("accessToken", {
-    httpOnly: true,
-    secure: config.NODE_ENV === "production",
-    sameSite: config.NODE_ENV === "production" ? "none" : "lax",
-    path: "/",
-  });
-};
-
 // Verify JWT access token
 export const verifyAccessToken = (token) => {
   if (!config.AUTH_TOKEN_SECRET) {

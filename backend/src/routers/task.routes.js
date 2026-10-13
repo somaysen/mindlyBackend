@@ -1,7 +1,7 @@
 import express from "express";
 
 import TaskController from "../controllers/task.controller.js";
-import authMiddleware from "../middlewares/auth.middlewar.js";
+import authMiddleware from "../middlewares/auth.middleware.js";
 
 const router = express.Router();
 
@@ -13,10 +13,10 @@ router.post("/create", authMiddleware, taskController.creatingTask);
 
 // GET ALL TASKS
 
-router.get("/", authMiddleware, taskController.getAllTasks);
+router.get("/", authMiddleware, taskController.getTasks);
 
 // GET TASKS BY USER
 
-router.get("/user", authMiddleware, taskController.getTaskByUserId);
+router.get("/user", authMiddleware, taskController.getTasks);
 
 export default router;

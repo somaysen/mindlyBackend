@@ -1,5 +1,5 @@
 
-import Notification from "../models/notificaton.model.js";
+import Notification from "../models/notification.model.js";
 
 class NotificationService {
   // Get notification settings

@@ -19,27 +19,34 @@ const connectDB = async () => {
     connectionPromise = mongoose
       .connect(mongoURI, { serverSelectionTimeoutMS: 10000 })
       .then(async () => {
-        const usersCollection = mongoose.connection.db.collection("users");
-        const indexes = await usersCollection.indexes();
-        const obsoleteEmailIndex = indexes.find(
-          (index) =>
-            index.unique === true &&
-            index.key?.email === 1 &&
-            Object.keys(index.key).length === 1,
-        );
+        const db = mongoose.connection.db;
+        const usersCollectionExists = await db
+          .listCollections({ name: "users" }, { nameOnly: true })
+          .hasNext();
 
-        if (obsoleteEmailIndex) {
-          await usersCollection.dropIndex(obsoleteEmailIndex.name);
-          logger.warn(
-            `Removed obsolete unique index ${obsoleteEmailIndex.name} from users collection`,
+        if (usersCollectionExists) {
+          const usersCollection = db.collection("users");
+          const indexes = await usersCollection.indexes();
+          const obsoleteEmailIndex = indexes.find(
+            (index) =>
+              index.unique === true &&
+              index.key?.email === 1 &&
+              Object.keys(index.key).length === 1,
           );
+
+          if (obsoleteEmailIndex) {
+            await usersCollection.dropIndex(obsoleteEmailIndex.name);
+            logger.warn(
+              `Removed obsolete unique index ${obsoleteEmailIndex.name} from users collection`,
+            );
+          }
         }
 
         logger.info("MongoDB connected successfully");
         return mongoose.connection;
       })
       .catch((error) => {
-        logger.error("MongoDB connection failed: %s", error.message);
+        logger.error(`MongoDB connection failed: ${error.message}`);
         throw error;
       })
       .finally(() => {

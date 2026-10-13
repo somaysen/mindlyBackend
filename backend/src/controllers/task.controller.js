@@ -30,7 +30,7 @@ class TaskController {
     }
   };
 
-  getAllTasks = async (req, res, next) => {
+  getTasks = async (req, res, next) => {
     try {
       const authId = req.auth?.id || req.auth?._id;
 
@@ -51,26 +51,6 @@ class TaskController {
     }
   };
 
-  getTaskByUserId = async (req, res, next) => {
-    try {
-      const authId = req.auth?.id || req.auth?._id;
-
-      if (!authId) {
-        throw new AppError("Unauthorized", 401);
-      }
-
-      const data = await taskService.getAllTasks({
-        user: authId,
-      });
-
-      return res.status(200).json({
-        success: true,
-        data,
-      });
-    } catch (error) {
-      next(error);
-    }
-  };
 }
 
 export default TaskController;

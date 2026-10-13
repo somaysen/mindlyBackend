@@ -2,32 +2,6 @@ import notificationService from "../services/notification.service.js";
 import AppError from "../utils/errors.js";
 
 class NotificationController {
-  permissionNotification = async (req, res, next) => {
-    try {
-      // Get user ID from auth middleware
-      const userId = req.auth?.id || req.auth?._id;
-      if (!userId) {
-        throw new AppError("Unauthorized", 401);
-      }
-
-      // Notification settings from request body
-      const data = req.body;
-
-      const settings = await notificationService.updateNotificationSettings(
-        userId,
-        data,
-      );
-
-      return res.status(200).json({
-        success: true,
-        message: "Notification settings updated successfully",
-        data: settings,
-      });
-    } catch (error) {
-      next(error);
-    }
-  };
-
   updateNotificationSettings = async (req, res, next) => {
     try {
       const userId = req.auth?.id || req.auth?._id;
