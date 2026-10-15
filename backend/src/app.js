@@ -3,16 +3,20 @@ import express from "express";
 import cors from "cors";
 import mongoose from "mongoose";
 
-import config from "./config/environment.js";
+import config, { validateConfig } from "./config/environment.js";
 import { corsOptions } from "./config/corsOption.js";
-import { redisClient } from "./config/redis.js";
+import { connectDB } from "./config/database.js";
+import { connectRedis, redisClient } from "./config/redis.js";
 import AppError from "./utils/error.js";
+import logger from "./utils/logger.js";
 import errorMiddleware from "./middlewares/errorMiddleware.js";
 import authRouter from "./router/auth.routes.js";
 import userRouter from "./router/user.routes.js";
 import NotificationRouter from "./router/notification.routes.js";
 import taskRouter from "./router/task.routes.js"
 import projectRouter from "./router/project.routes.js"
+
+validateConfig();
 
 const app = express();
 
@@ -50,11 +54,15 @@ try {
 app.use((req, res, next) => {
   const isMutation = ["POST", "PUT", "PATCH", "DELETE"].includes(req.method);
   const usesCookieAuth = req.cookies?.accessToken || req.cookies?.refreshToken;
+  const hasBearerAuth = /^Bearer\s+\S+$/i.test(req.get("authorization") || "");
+  const origin = req.get("origin");
+  const isLogout = req.method === "POST" && req.path.endsWith("/api/auth/logout");
 
   if (
     isMutation &&
     usesCookieAuth &&
-    !cookieMutationOrigins.has(req.get("origin"))
+    ((origin && !cookieMutationOrigins.has(origin)) ||
+      (!origin && !hasBearerAuth && !isLogout))
   ) {
     return next(new AppError("Request origin is not allowed", 403));
   }
@@ -72,6 +80,17 @@ app.use((req, res, next) => {
   return next();
 });
 
+// Connect lazily for serverless deployments and reuse the cached connections
+// across warm invocations. The same middleware is a no-op after server.js boots.
+app.use("/api", async (_req, _res, next) => {
+  try {
+    await Promise.all([connectDB(), connectRedis()]);
+    return next();
+  } catch (error) {
+    logger.error(`Service connection failed (${error.name || "Error"})`);
+    return next(new AppError("Service temporarily unavailable", 503));
+  }
+});
 
 app.use("/api/auth",authRouter);
 app.use("/api/user",userRouter);
@@ -79,10 +98,15 @@ app.use("/api/notification",NotificationRouter);
 app.use("/api/task", taskRouter);
 app.use("/api/project",projectRouter);
 
-app.get("/health", (_req, res) => {
-  const ready = mongoose.connection.readyState === 1 &&
-    (config.SKIP_REDIS || redisClient.isReady);
-  return res.status(ready ? 200 : 503).json({ status: ready ? "ok" : "unavailable" });
+app.get("/health", async (_req, res) => {
+  try {
+    await Promise.all([connectDB(), connectRedis()]);
+    const ready = mongoose.connection.readyState === 1 &&
+      (config.SKIP_REDIS || redisClient.isReady);
+    return res.status(ready ? 200 : 503).json({ status: ready ? "ok" : "unavailable" });
+  } catch {
+    return res.status(503).json({ status: "unavailable" });
+  }
 });
 
 app.use((req, res, next) => {

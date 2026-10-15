@@ -2,14 +2,13 @@ import app from "./src/app.js";
 import logger from "./src/utils/logger.js";
 import { connectDB, disconnectDB } from "./src/config/database.js";
 import { connectRedis, disconnectRedis } from "./src/config/redis.js";
-import config, { validateConfig } from "./src/config/environment.js";
+import config from "./src/config/environment.js";
 import { createServer } from "node:http";
 
 const server = createServer(app);
 
 async function startServer() {
   try {
-    validateConfig();
     await connectDB();
     await connectRedis();
 
