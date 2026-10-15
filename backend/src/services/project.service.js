@@ -1,9 +1,13 @@
-import AppError from "../utils/errors.js";
+import AppError from "../utils/error.js";
 import logger from "../utils/logger.js";
 import Project from "../models/project.model.js";
 
 const handleProjectError = (error, action) => {
   if (error instanceof AppError) return error;
+
+  if (error?.code === 11000) {
+    return new AppError("A project with this name already exists", 409);
+  }
 
   if (error?.name === "ValidationError") {
     return new AppError(error.message, 400);
@@ -25,7 +29,7 @@ class ProjectService {
   async createProject(userId, data = {}) {
     requireUserId(userId);
 
-    const projectName = data.projectName ?? data.ProjectName;
+    const projectName = data.projectName;
     if (typeof projectName !== "string" || !projectName.trim()) {
       throw new AppError("Project name is required", 400);
     }
@@ -33,11 +37,11 @@ class ProjectService {
     try {
       return await Project.create({
         user: userId,
-        ProjectName: projectName.trim(),
-        desciption: data.description ?? data.desciption ?? "",
-        FileList: data.fileList ?? data.FileList ?? [],
-        thoughtSpaces: data.thoughtSpaces ?? [],
-        tasklist: data.tasklist ?? [],
+        projectName: projectName.trim(),
+        description: data.description,
+        fileList: data.fileList,
+        thoughtSpaces: data.thoughtSpaces,
+        taskList: data.taskList,
       });
     } catch (error) {
       throw handleProjectError(error, "Create project");
@@ -72,15 +76,15 @@ class ProjectService {
     if (!projectId) throw new AppError("Project ID is required", 400);
 
     const updates = {};
-    const projectName = data.projectName ?? data.ProjectName;
-    const description = data.description ?? data.desciption;
-    const fileList = data.fileList ?? data.FileList;
+    const projectName = data.projectName;
+    const description = data.description;
+    const fileList = data.fileList;
 
-    if (projectName !== undefined) updates.ProjectName = projectName;
-    if (description !== undefined) updates.desciption = description;
-    if (fileList !== undefined) updates.FileList = fileList;
+    if (projectName !== undefined) updates.projectName = projectName;
+    if (description !== undefined) updates.description = description;
+    if (fileList !== undefined) updates.fileList = fileList;
     if (data.thoughtSpaces !== undefined) updates.thoughtSpaces = data.thoughtSpaces;
-    if (data.tasklist !== undefined) updates.tasklist = data.tasklist;
+    if (data.taskList !== undefined) updates.taskList = data.taskList;
 
     if (Object.keys(updates).length === 0) {
       throw new AppError("At least one project field is required", 400);

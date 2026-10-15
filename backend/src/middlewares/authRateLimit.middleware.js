@@ -1,9 +1,23 @@
-import config from "../config/env.js";
+import config from "../config/environment.js";
 import { getRedisClient } from "../config/redis.js";
-import AppError from "../utils/errors.js";
+import AppError from "../utils/error.js";
 
 const developmentBuckets = new Map();
 const windowSeconds = Math.ceil(config.RATE_LIMIT_WINDOW_MS / 1000);
+const maxDevelopmentBuckets = 10_000;
+
+const rememberDevelopmentBucket = (key, expiresAt) => {
+  if (developmentBuckets.size >= maxDevelopmentBuckets) {
+    const now = Date.now();
+    for (const [existingKey, bucket] of developmentBuckets) {
+      if (bucket.expiresAt <= now) developmentBuckets.delete(existingKey);
+    }
+    if (developmentBuckets.size >= maxDevelopmentBuckets) {
+      developmentBuckets.delete(developmentBuckets.keys().next().value);
+    }
+  }
+  developmentBuckets.set(key, { count: 1, expiresAt });
+};
 
 const authRateLimit = async (req, res, next) => {
   const clientKey = encodeURIComponent(req.ip || req.socket.remoteAddress || "unknown");
@@ -19,25 +33,20 @@ const authRateLimit = async (req, res, next) => {
       const bucket = developmentBuckets.get(key);
 
       if (!bucket || bucket.expiresAt <= now) {
-        developmentBuckets.set(key, {
-          count: 1,
-          expiresAt: now + config.RATE_LIMIT_WINDOW_MS,
-        });
+        rememberDevelopmentBucket(key, now + config.RATE_LIMIT_WINDOW_MS);
         count = 1;
       } else {
         bucket.count += 1;
         count = bucket.count;
       }
     } else {
-      if (redis.status !== "ready") {
+      if (!redis.isReady) {
         throw new AppError("Authentication service temporarily unavailable", 503);
       }
 
       count = await redis.eval(
         "local count = redis.call('INCR', KEYS[1]); if count == 1 then redis.call('EXPIRE', KEYS[1], ARGV[1]); end; return count",
-        1,
-        key,
-        windowSeconds,
+        { keys: [key], arguments: [String(windowSeconds)] },
       );
     }
 

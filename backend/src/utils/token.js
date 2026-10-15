@@ -1,8 +1,8 @@
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
-import config from "../config/env.js";
+import config from "../config/environment.js";
 import { getRedisClient } from "../config/redis.js";
-import AppError from "./errors.js";
+import AppError from "./error.js";
 
 const verificationLifetimeMs = 15 * 60 * 1000;
 const locallyBlockedTokens = new Map();
@@ -105,12 +105,9 @@ export const blockAccessToken = async (token) => {
   }
 
   try {
-    await redis.set(
-      `blocked_token:${jti}`,
-      "1",
-      "EX",
-      remainingSeconds
-    );
+    await redis.set(`blocked_token:${jti}`, "1", {
+      EX: remainingSeconds,
+    });
   } catch {
     throw new AppError("Authentication service temporarily unavailable", 503);
   }
@@ -149,7 +146,7 @@ const getAvailableRedisClient = () => {
     return null;
   }
 
-  if (redis.status !== "ready") {
+  if (!redis.isReady) {
     throw new AppError("Authentication service temporarily unavailable", 503);
   }
 

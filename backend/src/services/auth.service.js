@@ -1,6 +1,6 @@
 import Auth from "../models/auth.model.js";
-import config from "../config/env.js";
-import AppError from "../utils/errors.js";
+import config from "../config/environment.js";
+import AppError from "../utils/error.js";
 import sendVerificationEmail from "../utils/emailVerification.js";
 import logger from "../utils/logger.js";
 
@@ -24,7 +24,6 @@ const passwordByteLength = (password) => Buffer.byteLength(password, "utf8");
 
 const toSafeUser = (user) => ({
   id: user._id,
-  name: user.name,
   email: user.email,
 });
 

@@ -1,5 +1,5 @@
 import authService from "../services/auth.service.js";
-import config from "../config/env.js";
+import config from "../config/environment.js";
 
 const accessTokenCookieOptions = {
   httpOnly: true,

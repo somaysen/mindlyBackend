@@ -1,6 +1,7 @@
-import AppError from "../utils/errors.js";
+import AppError from "../utils/error.js";
 import logger from "../utils/logger.js";
 import TaskModel from "../models/task.model.js";
+import Project from "../models/project.model.js";
 
 const handleTaskError = (error, action) => {
   if (error instanceof AppError) return error;
@@ -26,6 +27,8 @@ class TaskService {
     dueTime,
     priority,
     status,
+    checklist,
+    project,
   } = {}) {
     if (!auth) {
       throw new AppError("Auth ID is required", 400);
@@ -36,6 +39,13 @@ class TaskService {
     }
 
     try {
+      if (project) {
+        const ownedProject = await Project.exists({ _id: project, user: auth });
+        if (!ownedProject) {
+          throw new AppError("Project not found", 404);
+        }
+      }
+
       return await TaskModel.create({
         user: auth,
         taskName: taskName.trim(),
@@ -44,6 +54,8 @@ class TaskService {
         dueTime: dueTime || null,
         priority: priority || "medium",
         status: status || "todo",
+        checklist: checklist === undefined ? [] : checklist,
+        project: project || null,
       });
     } catch (error) {
       throw handleTaskError(error, "Create task");

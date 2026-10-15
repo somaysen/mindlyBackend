@@ -1,5 +1,5 @@
 import taskService from "../services/task.service.js";
-import AppError from "../utils/errors.js";
+import AppError from "../utils/error.js";
 
 class TaskController {
   creatingTask = async (req, res, next) => {
@@ -18,6 +18,8 @@ class TaskController {
         dueTime: req.body.dueTime,
         priority: req.body.priority,
         status: req.body.status,
+        checklist: req.body.checklist,
+        project: req.body.project,
       });
 
       return res.status(201).json({
@@ -53,4 +55,4 @@ class TaskController {
 
 }
 
-export default TaskController;
+export default new TaskController();

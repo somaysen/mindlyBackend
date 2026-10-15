@@ -1,4 +1,4 @@
-import config from "../config/env.js";
+import config from "../config/environment.js";
 import transporter from "../config/mail.js";
 
 const sendVerificationEmail = async (user, token) => {

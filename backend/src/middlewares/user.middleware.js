@@ -1,4 +1,4 @@
-import AppError from "../utils/errors.js";
+import AppError from "../utils/error.js";
 import UserModel from "../models/user.model.js";
 
 const userMiddleware = async (req, res, next) => {
