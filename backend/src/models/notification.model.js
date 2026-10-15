@@ -1,5 +1,12 @@
 import mongoose from "mongoose";
 
+const channelPreferenceSchema = new mongoose.Schema(
+  {
+    enabled: { type: Boolean, default: true },
+  },
+  { _id: false },
+);
+
 const notificationSchema = new mongoose.Schema(
   {
     user: {
@@ -7,60 +14,47 @@ const notificationSchema = new mongoose.Schema(
       ref: "Auth",
       required: true,
       unique: true,
-      index: true,
     },
 
-    // Master notification switch
     notificationsEnabled: {
       type: Boolean,
       default: true,
     },
 
-    // Task reminders
     taskReminders: {
-      enabled: {
-        type: Boolean,
-        default: true,
-      },
+      type: channelPreferenceSchema,
+      default: () => ({}),
     },
 
-    // Focus session notifications
     focusSessions: {
-      enabled: {
-        type: Boolean,
-        default: true,
-      },
+      type: channelPreferenceSchema,
+      default: () => ({}),
     },
 
-    // Weekly reflection reminders
     weeklyReflections: {
-      enabled: {
-        type: Boolean,
-        default: true,
-      },
+      type: channelPreferenceSchema,
+      default: () => ({}),
     },
 
-    // Email notifications
     emailNotifications: {
-      enabled: {
-        type: Boolean,
-        default: true,
-      },
+      type: channelPreferenceSchema,
+      default: () => ({}),
     },
 
-    // Push notifications
     pushNotifications: {
-      enabled: {
-        type: Boolean,
-        default: true,
-      },
+      type: channelPreferenceSchema,
+      default: () => ({}),
     },
   },
   {
     timestamps: true,
+    versionKey: false,
   },
 );
 
-const Notification = mongoose.model("Notification", notificationSchema);
+// The unique user field already creates an index; avoid a duplicate index declaration.
+const Notification =
+  mongoose.models.Notification ||
+  mongoose.model("Notification", notificationSchema);
 
 export default Notification;

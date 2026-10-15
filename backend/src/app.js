@@ -1,28 +1,23 @@
-import express from "express";
 import cookieParser from "cookie-parser";
+import express from "express";
 import cors from "cors";
 
-import authRouter from "./routers/auth.routes.js";
-import userRoute from "./routers/user.routes.js";
-import TaskRouter from "./routers/task.routes.js";
-import NotificationRoute from "./routers/notification.routes.js";
-import ProjectRoute from "./routers/project.routes.js";
-
+import { corsOptions } from "./config/corsOption.js";
+import AppError from "./utils/error.js";
 import errorMiddleware from "./middlewares/errorMiddleware.js";
-import { corsOptions } from "./config/corsOptions.js";
-import connectDB from "./config/db.js";
-import AppError from "./utils/errors.js";
+import authRouter from "./router/auth.routes.js";
+import userRouter from "./router/user.routes.js";
+import NotificationRouter from "./router/notification.routes.js";
+import taskRouter from "./router/task.routes.js"
+import projectRouter from "./router/project.routes.js"
 
 const app = express();
-
-// ==========================
-// Global Middleware
-// ==========================
 
 app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors(corsOptions));
 app.use(express.json());
+
 app.use((req, res, next) => {
   if (
     req.body !== undefined &&
@@ -33,25 +28,12 @@ app.use((req, res, next) => {
   return next();
 });
 
-// Serverless platforms import the Express app without running server.js.
-app.use(async (req, res, next) => {
-  try {
-    await connectDB();
-    next();
-  } catch (error) {
-    next(error);
-  }
-});
 
-// ==========================
-// Routes
-// ==========================
-
-app.use("/api/auth", authRouter);
-app.use("/api/user", userRoute);
-app.use("/api/task", TaskRouter);
-app.use("/api/notification", NotificationRoute);
-app.use("/api/project", ProjectRoute);
+app.use("/api/auth",authRouter);
+app.use("/api/user",userRouter);
+app.use("/api/notification",NotificationRouter);
+app.use("/api/task", taskRouter);
+app.use("/api/project",projectRouter);
 
 
 app.use((req, res, next) => {
@@ -61,5 +43,6 @@ app.use((req, res, next) => {
 });
 
 app.use(errorMiddleware);
+
 
 export default app;

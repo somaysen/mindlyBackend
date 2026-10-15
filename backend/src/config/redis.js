@@ -1,43 +1,38 @@
-import Redis from "ioredis";
-import config from "./env.js";
+import redis from "redis";
+import config from "./environment.js";
 import logger from "../utils/logger.js";
 
-const redisClient = new Redis(config.REDIS_URL, {
-  password: config.REDIS_PASSWORD || undefined,
-  lazyConnect: true,
-  // Keep reconnecting after transient network failures such as ECONNRESET.
-  retryStrategy: (attempt) => Math.min(attempt * 500, 5000),
-  // Fail requests promptly while the client reconnects in the background.
-  maxRetriesPerRequest: 1,
-  enableOfflineQueue: false,
+const { REDIS_HOST, REDIS_PORT, REDIS_PASSWORD } = config;
+
+const client = redis.createClient({
+  password: REDIS_PASSWORD,
+  socket: {
+    host: REDIS_HOST,
+    port: REDIS_PORT,
+  },
 });
 
-redisClient.on("error", (error) => {
-  logger.error(`Redis connection error: ${error.message}`);
+client.on("error", (err) => {
+  logger.error("Redis connection error:", err.message);
 });
 
-redisClient.on("connect", () => {
-  logger.info("Redis connected successfully");
+client.on("connect", () => {
+  logger.info("✅ Redis connected successfully");
 });
 
 export async function connectRedis() {
   if (config.SKIP_REDIS) {
-    logger.warn("Redis connection skipped by configuration");
-    return null;
-  }
-
-  if (redisClient.status === "ready") {
-    return redisClient;
+    logger.info("Redis disabled; using in-memory token revocation");
+    return;
   }
 
   try {
-    await redisClient.connect();
-    return redisClient;
+    await client.connect();
   } catch (error) {
-    logger.error(`Failed to connect to Redis: ${error.message}`);
-    throw error;
+    logger.error("Failed to connect to Redis:", error);
+    process.exit(1);
   }
 }
 
-export const getRedisClient = () => redisClient;
-export { redisClient };
+export const redisClient = client;
+export const getRedisClient = () => client;

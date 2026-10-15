@@ -1,4 +1,4 @@
-import AppError from "../utils/errors.js";
+import AppError from "../utils/error.js";
 import projectService from "../services/project.service.js";
 
 const getAuthId = (req) => req.auth?.id || req.auth?._id;

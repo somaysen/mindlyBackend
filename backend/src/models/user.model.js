@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const UserSchema = new mongoose.Schema(
+const userSchema = new mongoose.Schema(
   {
     auth: {
       type: mongoose.Schema.Types.ObjectId,
@@ -8,33 +8,50 @@ const UserSchema = new mongoose.Schema(
       required: true,
       unique: true,
     },
+
     avatar: {
       type: String,
       trim: true,
+      maxlength: 2048,
+      default: "",
     },
+
     name: {
       type: String,
       trim: true,
-      maxLength: 60,
+      maxlength: 60,
+      default: "",
     },
-    interests: [
-      {
-        type: String,
-        trim: true,
+
+    interests: {
+      type: [{ type: String, trim: true, maxlength: 80 }],
+      default: [],
+      validate: {
+        validator(items) {
+          return items.length <= 30;
+        },
+        message: "A user can have at most 30 interests.",
       },
-    ],
-    planning: [
-      {
-        type: String,
-        trim: true,
+    },
+
+    planning: {
+      type: [{ type: String, trim: true, maxlength: 120 }],
+      default: [],
+      validate: {
+        validator(items) {
+          return items.length <= 30;
+        },
+        message: "A user can have at most 30 planning preferences.",
       },
-    ],
+    },
   },
   {
     timestamps: true,
+    versionKey: false,
   },
 );
 
-const UserModel = mongoose.model("user", UserSchema);
+const UserModel =
+  mongoose.models.user || mongoose.model("user", userSchema);
 
 export default UserModel;

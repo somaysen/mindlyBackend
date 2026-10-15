@@ -7,69 +7,75 @@ const authSchema = new mongoose.Schema(
       type: String,
       required: true,
       unique: true,
-      index: true,
       lowercase: true,
       trim: true,
+      maxlength: 254,
+      match: [/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Please provide a valid email address."],
     },
 
+    // Optional for OAuth-only accounts; required for password-based accounts.
     password: {
       type: String,
-      required: true,
       select: false,
+      minlength: 8,
+      required: function () {
+        return !this.googleId;
+      },
     },
 
     googleId: {
       type: String,
       trim: true,
+      sparse: true,
+      unique: true,
     },
 
     isVerified: {
       type: Boolean,
       default: false,
     },
+
+    // Keep this field compatible with existing verification controllers.
     emailVerificationToken: {
       type: String,
       default: null,
+      select: false,
     },
 
     emailVerificationExpires: {
       type: Date,
       default: null,
+      select: false,
     },
 
     lastLoginAt: {
       type: Date,
+      default: null,
     },
   },
   {
     timestamps: true,
+    versionKey: false,
+    toJSON: {
+      transform(_doc, ret) {
+        delete ret.password;
+        delete ret.emailVerificationToken;
+        delete ret.emailVerificationExpires;
+        return ret;
+      },
+    },
   },
 );
 
-// Hash password before saving
 authSchema.pre("save", async function () {
-  // Don't hash if password wasn't changed
-  if (!this.isModified("password")) {
-    return;
-  }
-
-  // Don't try to hash an empty password
-  if (!this.password) {
-    return;
-  }
-
+  if (!this.isModified("password") || !this.password) return;
   this.password = await bcrypt.hash(this.password, 12);
 });
 
-// Compare password
-authSchema.methods.comparePassword = async function (password) {
-  if (!this.password) {
-    return false;
-  }
-
-  return bcrypt.compare(password, this.password);
+authSchema.methods.comparePassword = async function (candidatePassword) {
+  if (!this.password || typeof candidatePassword !== "string") return false;
+  return bcrypt.compare(candidatePassword, this.password);
 };
 
-const Auth = mongoose.model("Auth", authSchema);
-
+const Auth = mongoose.models.Auth || mongoose.model("Auth", authSchema);
 export default Auth;

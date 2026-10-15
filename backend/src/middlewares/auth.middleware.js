@@ -1,4 +1,4 @@
-import AppError from "../utils/errors.js";
+import AppError from "../utils/error.js";
 import { isAccessTokenBlocked, verifyAccessToken } from "../utils/token.js";
 
 const authMiddleware = async (req, res, next) => {

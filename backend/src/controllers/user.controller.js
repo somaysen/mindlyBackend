@@ -1,5 +1,5 @@
 import userService from "../services/user.service.js";
-import AppError from "../utils/errors.js";
+import AppError from "../utils/error.js";
 
 class UserController {
   // Create or update the authenticated user's profile.

@@ -1,5 +1,5 @@
-import notificationService from "../services/notification.service.js";
-import AppError from "../utils/errors.js";
+import NotificationService from "../services/notification.service.js";
+import AppError from "../utils/error.js";
 
 class NotificationController {
   updateNotificationSettings = async (req, res, next) => {
@@ -9,7 +9,7 @@ class NotificationController {
         throw new AppError("Unauthorized", 401);
       }
 
-      const settings = await notificationService.updateNotificationSettings(
+      const settings = await NotificationService.updateNotificationSettings(
         userId,
         req.body,
       );
@@ -29,7 +29,7 @@ class NotificationController {
       const userId = req.auth?.id || req.auth?._id;
       if (!userId) throw new AppError("Unauthorized", 401);
 
-      const settings = await notificationService.getNotificationSettings(userId);
+      const settings = await NotificationService.getNotificationSettings(userId);
       return res.status(200).json({
         success: true,
         message: "Notification settings fetched successfully",

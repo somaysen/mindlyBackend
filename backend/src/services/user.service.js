@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import UserModel from "../models/user.model.js";
-import AppError from "../utils/errors.js";
+import AppError from "../utils/error.js";
 
 const normalizeStringList = (value, fieldName) => {
   if (!Array.isArray(value) || value.some((item) => typeof item !== "string")) {
