@@ -121,6 +121,10 @@ app.use("/api/notification",NotificationRouter);
 app.use("/api/task", taskRouter);
 app.use("/api/project",projectRouter);
 
+app.get("/", (_req, res) => {
+  return res.status(200).json({ message: "Mindly API is running" });
+});
+
 app.get("/health", async (_req, res) => {
   try {
     await connectRequiredServices();
