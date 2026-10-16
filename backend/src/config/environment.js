@@ -19,7 +19,7 @@ const config = {
   PORT: Number(process.env.PORT || 3000),
   NODE_ENV: process.env.NODE_ENV || "development",
   ALLOWED_ORIGINS:
-    process.env.ALLOWED_ORIGINS || process.env.CORS_ORIGINS || "http://localhost:3000",
+    process.env.ALLOWED_ORIGINS || process.env.CORS_ORIGINS || "https://mindly-alpha.vercel.app"  || "http://localhost:3000",
   FRONTEND_URL: process.env.FRONTEND_URL || "http://localhost:3000",
   RATE_LIMIT_WINDOW_MS: Number(process.env.AUTH_RATE_LIMIT_WINDOW_MS || 15 * 60 * 1000),
   AUTH_RATE_LIMIT_MAX_REQUESTS: Number(process.env.AUTH_RATE_LIMIT_MAX_REQUESTS || 20),

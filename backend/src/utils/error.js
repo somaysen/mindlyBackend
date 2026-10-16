@@ -1,3 +1,4 @@
+
 class AppError extends Error {
   constructor(message, statusCode = 500) {
     super(message);
@@ -5,6 +6,9 @@ class AppError extends Error {
     this.name = "AppError";
     this.statusCode = statusCode;
     this.success = false;
+    if(error){
+      console.log(error,error.message);
+    }
 
     Error.captureStackTrace(this, this.constructor);
   }

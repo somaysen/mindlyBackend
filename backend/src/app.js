@@ -20,6 +20,30 @@ validateConfig();
 
 const app = express();
 
+async function connectRequiredServices() {
+  try {
+    await connectDB();
+  } catch (error) {
+    const details = String(error?.message || "").replace(
+      /(?:mongodb(?:\+srv)?|rediss?):\/\/[^\s"')]+/gi,
+      "[connection URI redacted]",
+    );
+    logger.error(`MongoDB connection failed (${error?.name || "Error"}): ${details}`);
+    throw new AppError("Service temporarily unavailable", 503);
+  }
+
+  try {
+    await connectRedis();
+  } catch (error) {
+    const details = String(error?.message || "").replace(
+      /(?:redis|rediss?):\/\/[^\s"')]+/gi,
+      "[connection URI redacted]",
+    );
+    logger.error(`Redis connection failed (${error?.name || "Error"}): ${details}`);
+    throw new AppError("Service temporarily unavailable", 503);
+  }
+}
+
 app.disable("x-powered-by");
 if (config.TRUST_PROXY) {
   const trustProxy = /^(true|false)$/i.test(config.TRUST_PROXY)
@@ -84,11 +108,10 @@ app.use((req, res, next) => {
 // across warm invocations. The same middleware is a no-op after server.js boots.
 app.use("/api", async (_req, _res, next) => {
   try {
-    await Promise.all([connectDB(), connectRedis()]);
+    await connectRequiredServices();
     return next();
   } catch (error) {
-    logger.error(`Service connection failed (${error.name || "Error"})`);
-    return next(new AppError("Service temporarily unavailable", 503));
+    return next(error);
   }
 });
 
@@ -100,7 +123,7 @@ app.use("/api/project",projectRouter);
 
 app.get("/health", async (_req, res) => {
   try {
-    await Promise.all([connectDB(), connectRedis()]);
+    await connectRequiredServices();
     const ready = mongoose.connection.readyState === 1 &&
       (config.SKIP_REDIS || redisClient.isReady);
     return res.status(ready ? 200 : 503).json({ status: ready ? "ok" : "unavailable" });
