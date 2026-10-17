@@ -18,6 +18,26 @@ const handleTaskError = (error, action) => {
   return new AppError(`Failed to ${action.toLowerCase()}`, 500);
 };
 
+const normalizeChecklist = (checklist) => {
+  if (checklist === undefined || checklist === null || checklist === "") {
+    return [];
+  }
+
+  if (typeof checklist === "string") {
+    try {
+      checklist = JSON.parse(checklist);
+    } catch {
+      throw new AppError("Checklist must be a JSON array", 400);
+    }
+  }
+
+  if (!Array.isArray(checklist)) {
+    throw new AppError("Checklist must be an array", 400);
+  }
+
+  return checklist;
+};
+
 class TaskService {
   async creatingTask({
     auth,
@@ -38,6 +58,8 @@ class TaskService {
       throw new AppError("Task name is required", 400);
     }
 
+    const normalizedChecklist = normalizeChecklist(checklist);
+
     try {
       if (project) {
         const ownedProject = await Project.exists({ _id: project, user: auth });
@@ -54,7 +76,7 @@ class TaskService {
         dueTime: dueTime || null,
         priority: priority || "medium",
         status: status || "todo",
-        checklist: checklist === undefined ? [] : checklist,
+        checklist: normalizedChecklist,
         project: project || null,
       });
     } catch (error) {
