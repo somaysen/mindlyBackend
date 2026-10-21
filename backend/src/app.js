@@ -15,6 +15,7 @@ import userRouter from "./router/user.routes.js";
 import NotificationRouter from "./router/notification.routes.js";
 import taskRouter from "./router/task.routes.js"
 import projectRouter from "./router/project.routes.js"
+import fileRouter from "./router/file.routes.js";
 
 validateConfig();
 
@@ -78,15 +79,13 @@ try {
 app.use((req, res, next) => {
   const isMutation = ["POST", "PUT", "PATCH", "DELETE"].includes(req.method);
   const usesCookieAuth = req.cookies?.accessToken || req.cookies?.refreshToken;
-  const hasBearerAuth = /^Bearer\s+\S+$/i.test(req.get("authorization") || "");
   const origin = req.get("origin");
-  const isLogout = req.method === "POST" && req.path.endsWith("/api/auth/logout");
 
   if (
     isMutation &&
     usesCookieAuth &&
-    ((origin && !cookieMutationOrigins.has(origin)) ||
-      (!origin && !hasBearerAuth && !isLogout))
+    origin &&
+    !cookieMutationOrigins.has(origin)
   ) {
     return next(new AppError("Request origin is not allowed", 403));
   }
@@ -119,6 +118,7 @@ app.use("/api/auth",authRouter);
 app.use("/api/user",userRouter);
 app.use("/api/notification",NotificationRouter);
 app.use("/api/task", taskRouter);
+app.use("/api/file", fileRouter);
 app.use("/api/project",projectRouter);
 
 app.get("/", (_req, res) => {

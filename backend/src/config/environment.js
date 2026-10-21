@@ -16,6 +16,9 @@ const config = {
   JWT_REFRESH_TTL_DAYS: Number(process.env.JWT_REFRESH_TTL_DAYS || 7),
   GMAIL_USER: process.env.GMAIL_USER,
   GMAIL_APP_PASSWORD: process.env.GMAIL_APP_PASSWORD,
+  CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME,
+  CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY,
+  CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET,
   PORT: Number(process.env.PORT || 3000),
   NODE_ENV: process.env.NODE_ENV || "development",
   ALLOWED_ORIGINS:
@@ -29,6 +32,17 @@ const config = {
 
 export function validateConfig() {
   const errors = [];
+  const cloudinaryCredentials = [
+    config.CLOUDINARY_CLOUD_NAME,
+    config.CLOUDINARY_API_KEY,
+    config.CLOUDINARY_API_SECRET,
+  ];
+
+  if (cloudinaryCredentials.some(Boolean) && !cloudinaryCredentials.every(Boolean)) {
+    errors.push(
+      "CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET must be configured together",
+    );
+  }
 
   if (!config.MONGO_URI) errors.push("MONGO_URI is required");
   if (!Number.isInteger(config.PORT) || config.PORT < 1 || config.PORT > 65535) {
