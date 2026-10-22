@@ -18,7 +18,11 @@ const linkGoogleAccount = (userId, googleId) =>
   Auth.findOneAndUpdate(
     {
       _id: userId,
-      $or: [{ googleId: { $exists: false } }, { googleId: null }, { googleId }],
+      $or: [
+        { googleId: { $exists: false } },
+        { googleId: null },
+        { googleId },
+      ],
     },
     {
       $set: {
