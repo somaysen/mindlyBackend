@@ -56,7 +56,17 @@ class AuthService {
         audience: config.GOOGLE_CLIENT_ID,
       });
       payload = ticket.getPayload();
-    } catch {
+    } catch (error) {
+      const temporaryGoogleFailure =
+        ["ECONNRESET", "ETIMEDOUT", "ENOTFOUND", "EAI_AGAIN"].includes(
+          error?.code,
+        ) ||
+        error?.response?.status === 429 ||
+        error?.response?.status >= 500;
+
+      if (temporaryGoogleFailure) {
+        throw new AppError("Google sign-in is temporarily unavailable", 503);
+      }
       throw new AppError("Google credential is invalid or expired", 401);
     }
 
@@ -77,19 +87,40 @@ class AuthService {
         );
       }
 
-      user = await Auth.create({
-        email,
-        googleId,
-        isVerified: true,
-        lastLoginAt: new Date(),
-      });
-    } else {
-      user.lastLoginAt = new Date();
-      if (!user.name && typeof payload.name === "string") {
-        user.name = payload.name.slice(0, 120);
+      try {
+        user = await Auth.create({
+          name:
+            typeof payload.name === "string"
+              ? payload.name.slice(0, 120)
+              : email.split("@")[0],
+          email,
+          googleId,
+          isVerified: true,
+          lastLoginAt: new Date(),
+        });
+      } catch (error) {
+        // Another request may have created this Google account after the lookup.
+        if (error?.code !== 11000) throw error;
+
+        user = await Auth.findOne({ googleId });
+        if (!user) {
+          const emailUser = await Auth.findOne({ email });
+          if (emailUser) {
+            throw new AppError(
+              "An account with this email already exists. Sign in with your password first.",
+              409,
+            );
+          }
+          throw error;
+        }
       }
-      await user.save();
     }
+
+    user.lastLoginAt = new Date();
+    if (!user.name && typeof payload.name === "string") {
+      user.name = payload.name.slice(0, 120);
+    }
+    await user.save();
 
     return {
       token: createAccessToken(user),
