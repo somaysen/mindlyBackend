@@ -10,33 +10,28 @@ router.use(authMiddleware);
 
 router.post(
   "/",
-  authMiddleware,
   userMiddleware,
   projectController.createProject,
 );
 // Keep the original create path available for existing clients.
 router.post(
   "/creating-project",
-  authMiddleware,
   userMiddleware,
   projectController.createProject,
 );
-router.get("/get-project", authMiddleware, userMiddleware, projectController.getProjects);
+router.get("/get-project", userMiddleware, projectController.getProjects);
 router.get(
   "/:projectId",
-  authMiddleware,
   userMiddleware,
   projectController.getProjectById,
 );
 router.patch(
   "/:projectId",
-  authMiddleware,
   userMiddleware,
   projectController.updateProject,
 );
 router.delete(
   "/:projectId",
-  authMiddleware,
   userMiddleware,
   projectController.deleteProject,
 );

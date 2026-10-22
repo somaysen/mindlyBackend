@@ -7,19 +7,19 @@ import fileController from "../controllers/file.controller.js";
 const router = express.Router();
 
 router.get(
-  "/project/:projectId/files",
+  "/:projectId/files",
   authMiddleware,
   userMiddleware,
   fileController.listProjectFiles,
 );
 router.post(
-  "/project/:projectId/files",
+  "/:projectId/files",
   authMiddleware,
   userMiddleware,
   fileController.uploadProjectFile,
 );
 router.delete(
-  "/project/:projectId/files/:fileId",
+  "/:projectId/files/:fileId",
   authMiddleware,
   userMiddleware,
   fileController.deleteProjectFile,

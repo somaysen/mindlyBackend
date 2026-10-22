@@ -107,11 +107,28 @@ class AuthService {
       );
     }
 
-    const user = await Auth.create({
-      email,
-      password,
-      isVerified: false,
-    });
+    let user;
+    try {
+      user = await Auth.create({
+        email,
+        password,
+        isVerified: false,
+      });
+    } catch (error) {
+      if (error?.code !== 11000) throw error;
+
+      const existingUser = await Auth.findOne({ email });
+      if (!existingUser) throw error;
+      if (existingUser.isVerified) {
+        throw new AppError("A user with this email already exists", 409);
+      }
+
+      await this.sendVerificationEmail(existingUser);
+      return {
+        ...toSafeUser(existingUser),
+        message: "Verification email has been resent",
+      };
+    }
 
     await this.sendVerificationEmail(user);
 

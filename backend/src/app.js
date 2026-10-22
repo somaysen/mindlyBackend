@@ -118,7 +118,8 @@ app.use("/api/auth",authRouter);
 app.use("/api/user",userRouter);
 app.use("/api/notification",NotificationRouter);
 app.use("/api/task", taskRouter);
-app.use("/api/file", fileRouter);
+app.use("/api/file/project", fileRouter);
+app.use("/api/project", fileRouter);
 app.use("/api/project",projectRouter);
 
 app.get("/", (_req, res) => {

@@ -1,11 +1,32 @@
 import { v2 as cloudinary } from "cloudinary";
 import config from "./environment.js";
 import AppError from "../utils/error.js";
+import logger from "../utils/logger.js";
 
+function credentialsFromUrl(value) {
+  if (!value) return {};
+
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "cloudinary:") return {};
+
+    return {
+      cloud_name: url.hostname,
+      api_key: decodeURIComponent(url.username),
+      api_secret: decodeURIComponent(url.password),
+    };
+  } catch {
+    return {};
+  }
+}
+
+const urlCredentials = credentialsFromUrl(config.CLOUDINARY_URL);
 const credentials = {
-  cloud_name: config.CLOUDINARY_CLOUD_NAME,
-  api_key: config.CLOUDINARY_API_KEY,
-  api_secret: config.CLOUDINARY_API_SECRET,
+  // Treat CLOUDINARY_URL as one credential set so settings from different
+  // Cloudinary accounts cannot be mixed together.
+  cloud_name: urlCredentials.cloud_name || config.CLOUDINARY_CLOUD_NAME,
+  api_key: urlCredentials.api_key || config.CLOUDINARY_API_KEY,
+  api_secret: urlCredentials.api_secret || config.CLOUDINARY_API_SECRET,
 };
 
 const configuredCredentialCount = Object.values(credentials).filter(Boolean).length;
@@ -27,6 +48,21 @@ function validateSource(source) {
   }
 }
 
+function getSafeProviderError(error) {
+  let message = String(
+    error?.error?.message || error?.message || "Unknown Cloudinary error",
+  );
+
+  for (const secret of [credentials.api_key, credentials.api_secret]) {
+    if (secret) message = message.replaceAll(secret, "[redacted]");
+  }
+
+  return message
+    .replace(/cloudinary:\/\/[^\s@]+@[^\s]+/gi, "cloudinary://[redacted]")
+    .replace(/data:[^\s,]+;base64,[A-Za-z0-9+/=]+/gi, "[file data redacted]")
+    .slice(0, 500);
+}
+
 /** Upload a local path, remote URL, or data URI to Cloudinary. */
 export async function uploadFile(source, options = {}) {
   requireCloudinary();
@@ -38,6 +74,10 @@ export async function uploadFile(source, options = {}) {
       ...options,
     });
   } catch (error) {
+    const status = Number(error?.http_code || error?.statusCode);
+    logger.error(
+      `Cloudinary upload failed${Number.isInteger(status) ? ` (HTTP ${status})` : ""}: ${getSafeProviderError(error)}`,
+    );
     throw new AppError("Cloudinary upload failed", 502);
   }
 }

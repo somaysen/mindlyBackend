@@ -1,4 +1,5 @@
 import AppError from "../utils/error.js";
+import logger from "../utils/logger.js";
 import FileModel from "../models/file.model.js";
 import Project from "../models/project.model.js";
 import {
@@ -8,34 +9,60 @@ import {
 
 const MAX_FILE_SIZE = 700 * 1024;
 
-function parseDataUri(dataUri) {
-  if (typeof dataUri !== "string") {
-    throw new AppError("fileData must be a base64 data URI", 400);
+function isMimeType(value) {
+  return /^[\w!#$&^_.+-]+\/[\w!#$&^_.+-]+$/.test(value);
+}
+
+function parseFileData(fileData, suppliedMimeType) {
+  if (typeof fileData !== "string" || !fileData.trim()) {
+    throw new AppError("fileData must be a base64 data URI or base64 string", 400);
   }
 
-  const match = dataUri.match(
-    /^data:([\w.+-]+\/[\w.+-]+);base64,([A-Za-z0-9+/]*={0,2})$/,
-  );
-  if (!match || !match[2]) {
-    throw new AppError("fileData must be a valid base64 data URI", 400);
+  let value = fileData.trim();
+  let mimeType =
+    typeof suppliedMimeType === "string" && isMimeType(suppliedMimeType.trim())
+      ? suppliedMimeType.trim()
+      : "application/octet-stream";
+
+  if (/^data:/i.test(value)) {
+    const commaIndex = value.indexOf(",");
+    if (commaIndex < 0) {
+      throw new AppError("fileData must be a valid base64 data URI", 400);
+    }
+
+    const metadata = value.slice(5, commaIndex).split(";");
+    if (metadata.length < 2 || metadata.at(-1).toLowerCase() !== "base64") {
+      throw new AppError("fileData data URI must use base64 encoding", 400);
+    }
+    if (metadata[0] && isMimeType(metadata[0])) mimeType = metadata[0];
+    value = value.slice(commaIndex + 1);
   }
 
-  const size = Buffer.from(match[2], "base64").byteLength;
+  const base64 = value.replace(/\s/g, "").replace(/-/g, "+").replace(/_/g, "/");
+  if (!base64 || !/^[A-Za-z0-9+/]*={0,2}$/.test(base64)) {
+    throw new AppError("fileData must contain valid base64 data", 400);
+  }
+
+  const unpadded = base64.replace(/=+$/, "");
+  if (unpadded.length % 4 === 1) {
+    throw new AppError("fileData must contain valid base64 data", 400);
+  }
+
+  const normalizedBase64 = unpadded + "=".repeat((4 - (unpadded.length % 4)) % 4);
+  const buffer = Buffer.from(normalizedBase64, "base64");
+  if (!buffer.length || buffer.toString("base64").replace(/=+$/, "") !== unpadded) {
+    throw new AppError("fileData must contain valid base64 data", 400);
+  }
+
+  const size = buffer.byteLength;
   if (size > MAX_FILE_SIZE) {
     throw new AppError("File must be 700 KB or smaller", 413);
   }
 
-  return { mimeType: match[1], size };
-}
-
-function mapFileToProject(file) {
   return {
-    fileId: file._id,
-    name: file.title,
-    url: file.cloudinaryUrl,
-    cloudinaryPublicId: file.cloudinaryPublicId,
-    mimeType: file.mimeType,
-    size: file.size,
+    mimeType,
+    size,
+    dataUri: `data:${mimeType};base64,${normalizedBase64}`,
   };
 }
 
@@ -47,11 +74,15 @@ class FileService {
     return FileModel.find({ userId, projectId }).sort({ createdAt: -1 });
   }
 
-  async uploadProjectFile(userId, projectId, { title, fileData } = {}) {
+  async uploadProjectFile(
+    userId,
+    projectId,
+    { title, fileData, mimeType: suppliedMimeType } = {},
+  ) {
     const project = await Project.exists({ _id: projectId, user: userId });
     if (!project) throw new AppError("Project not found", 404);
 
-    const { mimeType, size } = parseDataUri(fileData);
+    const { mimeType, size, dataUri } = parseFileData(fileData, suppliedMimeType);
     const normalizedTitle =
       typeof title === "string" && title.trim()
         ? title.trim()
@@ -60,7 +91,7 @@ class FileService {
       throw new AppError("File title must be 200 characters or fewer", 400);
     }
 
-    const uploaded = await uploadFile(fileData, {
+    const uploaded = await uploadFile(dataUri, {
       folder: `mindly/projects/${projectId}`,
       resource_type: "auto",
     });
@@ -81,13 +112,16 @@ class FileService {
 
       const updatedProject = await Project.findOneAndUpdate(
         { _id: projectId, user: userId },
-        { $push: { fileList: mapFileToProject(savedFile) } },
-        { new: true, runValidators: true },
+        { $push: { fileList: savedFile._id } },
+        { returnDocument: "after", runValidators: true },
       );
 
       if (!updatedProject) throw new AppError("Project not found", 404);
       return savedFile;
     } catch (error) {
+      logger.error(
+        `Failed to save uploaded file metadata (${error?.name || "Error"}): ${error?.message || "Unknown database error"}`,
+      );
       if (savedFile) await FileModel.deleteOne({ _id: savedFile._id });
       await deleteCloudinaryFile(uploaded.public_id, {
         resource_type: uploaded.resource_type,
@@ -109,7 +143,7 @@ class FileService {
       FileModel.deleteOne({ _id: file._id, userId, projectId }),
       Project.updateOne(
         { _id: projectId, user: userId },
-        { $pull: { fileList: { fileId: file._id } } },
+        { $pull: { fileList: file._id } },
       ),
     ]);
 

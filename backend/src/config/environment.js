@@ -17,13 +17,16 @@ const config = {
   GMAIL_USER: process.env.GMAIL_USER,
   GMAIL_APP_PASSWORD: process.env.GMAIL_APP_PASSWORD,
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
-  CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME,
-  CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY,
-  CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET,
+  CLOUDINARY_URL: process.env.CLOUDINARY_URL,
+  CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME || process.env.CloudName,
+  CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY || process.env.APIkey,
+  CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET || process.env.APISecret,
   PORT: Number(process.env.PORT || 3000),
   NODE_ENV: process.env.NODE_ENV || "development",
   ALLOWED_ORIGINS:
-    process.env.ALLOWED_ORIGINS || process.env.CORS_ORIGINS || "https://mindly-alpha.vercel.app"  || "http://localhost:3000",
+    process.env.ALLOWED_ORIGINS ||
+    process.env.CORS_ORIGINS ||
+    "https://mindly-alpha.vercel.app",
   FRONTEND_URL: process.env.FRONTEND_URL || "http://localhost:3000",
   RATE_LIMIT_WINDOW_MS: Number(process.env.AUTH_RATE_LIMIT_WINDOW_MS || 15 * 60 * 1000),
   AUTH_RATE_LIMIT_MAX_REQUESTS: Number(process.env.AUTH_RATE_LIMIT_MAX_REQUESTS || 20),
@@ -39,7 +42,24 @@ export function validateConfig() {
     config.CLOUDINARY_API_SECRET,
   ];
 
-  if (cloudinaryCredentials.some(Boolean) && !cloudinaryCredentials.every(Boolean)) {
+  if (config.CLOUDINARY_URL) {
+    try {
+      const cloudinaryUrl = new URL(config.CLOUDINARY_URL);
+      if (
+        cloudinaryUrl.protocol !== "cloudinary:" ||
+        !cloudinaryUrl.hostname ||
+        !cloudinaryUrl.username ||
+        !cloudinaryUrl.password
+      ) {
+        errors.push("CLOUDINARY_URL must contain a cloud name, API key, and API secret");
+      }
+    } catch {
+      errors.push("CLOUDINARY_URL must be a valid Cloudinary URL");
+    }
+  } else if (
+    cloudinaryCredentials.some(Boolean) &&
+    !cloudinaryCredentials.every(Boolean)
+  ) {
     errors.push(
       "CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET must be configured together",
     );

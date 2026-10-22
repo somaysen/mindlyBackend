@@ -1,6 +1,9 @@
 import AppError from "../utils/error.js";
 import logger from "../utils/logger.js";
 import Project from "../models/project.model.js";
+import FileModel from "../models/file.model.js";
+import TaskModel from "../models/task.model.js";
+import { deleteFile as deleteCloudinaryFile } from "../config/fileStore.js";
 
 const handleProjectError = (error, action) => {
   if (error instanceof AppError) return error;
@@ -39,7 +42,6 @@ class ProjectService {
         user: userId,
         projectName: projectName.trim(),
         description: data.description,
-        fileList: data.fileList,
         thoughtSpaces: data.thoughtSpaces,
         taskList: data.taskList,
       });
@@ -78,11 +80,9 @@ class ProjectService {
     const updates = {};
     const projectName = data.projectName;
     const description = data.description;
-    const fileList = data.fileList;
 
     if (projectName !== undefined) updates.projectName = projectName;
     if (description !== undefined) updates.description = description;
-    if (fileList !== undefined) updates.fileList = fileList;
     if (data.thoughtSpaces !== undefined) updates.thoughtSpaces = data.thoughtSpaces;
     if (data.taskList !== undefined) updates.taskList = data.taskList;
 
@@ -94,7 +94,7 @@ class ProjectService {
       const project = await Project.findOneAndUpdate(
         { _id: projectId, user: userId },
         { $set: updates },
-        { new: true, runValidators: true },
+        { returnDocument: "after", runValidators: true },
       );
       if (!project) throw new AppError("Project not found", 404);
       return project;
@@ -108,8 +108,34 @@ class ProjectService {
     if (!projectId) throw new AppError("Project ID is required", 400);
 
     try {
-      const project = await Project.findOneAndDelete({ _id: projectId, user: userId });
+      const project = await Project.findOneAndDelete({
+        _id: projectId,
+        user: userId,
+      });
       if (!project) throw new AppError("Project not found", 404);
+
+      const files = await FileModel.find({ userId, projectId })
+        .select("cloudinaryPublicId cloudinaryResourceType")
+        .lean();
+
+      await Promise.all([
+        FileModel.deleteMany({ userId, projectId }),
+        TaskModel.deleteMany({ user: userId, project: projectId }),
+      ]);
+
+      const cleanupResults = await Promise.allSettled(
+        files.map((file) =>
+          deleteCloudinaryFile(file.cloudinaryPublicId, {
+            resource_type: file.cloudinaryResourceType || "image",
+          }),
+        ),
+      );
+      cleanupResults.forEach((result) => {
+        if (result.status === "rejected") {
+          logger.error(`Cloudinary cleanup failed after project deletion: ${result.reason?.message || "Unknown error"}`);
+        }
+      });
+
       return project;
     } catch (error) {
       throw handleProjectError(error, "Delete project");
