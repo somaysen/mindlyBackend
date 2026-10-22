@@ -3,7 +3,6 @@ import config from "../config/environment.js";
 import AppError from "../utils/error.js";
 import sendVerificationEmail from "../utils/emailVerification.js";
 import logger from "../utils/logger.js";
-import { OAuth2Client } from "google-auth-library";
 
 import {
   blockAccessToken,
@@ -29,111 +28,7 @@ const toSafeUser = (user) => ({
   email: user.email,
 });
 
-const googleClient = new OAuth2Client();
-
 class AuthService {
-  // =========================
-  // GOOGLE LOGIN
-  // =========================
-
-  async googleLogin(credential) {
-    if (
-      typeof credential !== "string" ||
-      !credential.trim() ||
-      credential.length > 10_000
-    ) {
-      throw new AppError("A valid Google credential is required", 400);
-    }
-
-    if (!config.GOOGLE_CLIENT_ID) {
-      throw new AppError("Google sign-in is not configured", 503);
-    }
-
-    let payload;
-    try {
-      const ticket = await googleClient.verifyIdToken({
-        idToken: credential,
-        audience: config.GOOGLE_CLIENT_ID,
-      });
-      payload = ticket.getPayload();
-    } catch (error) {
-      const temporaryGoogleFailure =
-        ["ECONNRESET", "ETIMEDOUT", "ENOTFOUND", "EAI_AGAIN"].includes(
-          error?.code,
-        ) ||
-        error?.response?.status === 429 ||
-        error?.response?.status >= 500;
-
-      if (temporaryGoogleFailure) {
-        throw new AppError("Google sign-in is temporarily unavailable", 503);
-      }
-      throw new AppError("Google credential is invalid or expired", 401);
-    }
-
-    if (!payload?.sub || !payload.email || payload.email_verified !== true) {
-      throw new AppError("Google account could not be verified", 401);
-    }
-
-    const googleId = payload.sub;
-    const email = normalizeEmail(payload.email);
-    let user = await Auth.findOne({ googleId });
-
-    if (!user) {
-      const existingEmailUser = await Auth.findOne({ email });
-      if (existingEmailUser) {
-        throw new AppError(
-          "An account with this email already exists. Sign in with your password first.",
-          409,
-        );
-      }
-
-      try {
-        user = await Auth.create({
-          name:
-            typeof payload.name === "string"
-              ? payload.name.slice(0, 120)
-              : email.split("@")[0],
-          email,
-          googleId,
-          isVerified: true,
-          lastLoginAt: new Date(),
-        });
-      } catch (error) {
-        // Another request may have created this Google account after the lookup.
-        if (error?.code !== 11000) throw error;
-
-        user = await Auth.findOne({ googleId });
-        if (!user) {
-          const emailUser = await Auth.findOne({ email });
-          if (emailUser) {
-            throw new AppError(
-              "An account with this email already exists. Sign in with your password first.",
-              409,
-            );
-          }
-          throw error;
-        }
-      }
-    }
-
-    user.lastLoginAt = new Date();
-    if (!user.name && typeof payload.name === "string") {
-      user.name = payload.name.slice(0, 120);
-    }
-    await user.save();
-
-    return {
-      token: createAccessToken(user),
-      refreshToken: createRefreshToken(user),
-      user: {
-        ...toSafeUser(user),
-        isVerified: user.isVerified,
-        lastLoginAt: user.lastLoginAt,
-        createdAt: user.createdAt,
-      },
-    };
-  }
-
   // =========================
   // REFRESH ACCESS TOKEN
   // =========================
