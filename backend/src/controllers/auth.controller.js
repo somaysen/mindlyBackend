@@ -1,4 +1,5 @@
 import authService from "../services/auth.service.js";
+import googleService from "../services/google.service.js";
 import config from "../config/environment.js";
 
 const accessTokenCookieOptions = {
@@ -69,7 +70,7 @@ class AuthController {
 
   googleLogin = async (req, res, next) => {
     try {
-      const { token, refreshToken, ...data } = await authService.googleLogin(
+      const { token, refreshToken, ...data } = await googleService.login(
         req.body?.credential,
       );
       res.cookie("accessToken", token, accessTokenCookieOptions);
