@@ -7,10 +7,15 @@ const router = express.Router();
 
 router.post("/register", authRateLimit, authController.register);
 router.post("/login", authRateLimit, authController.login);
+router.post("/google", authRateLimit, authController.googleLogin);
 router.post("/logout", authMiddleware, authController.logout);
 router.post("/verify-email", authRateLimit, authController.verifyEmail);
 router.get("/verify-email", authRateLimit, authController.verifyEmail);
-router.post("/resend-verification", authRateLimit, authController.resendVerification);
+router.post(
+  "/resend-verification",
+  authRateLimit,
+  authController.resendVerification,
+);
 router.post("/refresh", authRateLimit, authController.refreshToken);
 
 export default router;

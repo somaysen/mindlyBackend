@@ -50,7 +50,9 @@ class AuthController {
 
   login = async (req, res, next) => {
     try {
-      const { token, refreshToken, ...data } = await authService.login(req.body);
+      const { token, refreshToken, ...data } = await authService.login(
+        req.body,
+      );
       res.cookie("accessToken", token, accessTokenCookieOptions);
       res.cookie("refreshToken", refreshToken, refreshTokenCookieOptions);
       res.status(200).json({
@@ -62,6 +64,23 @@ class AuthController {
       });
     } catch (error) {
       next(error);
+    }
+  };
+
+  googleLogin = async (req, res, next) => {
+    try {
+      const { token, refreshToken, ...data } = await authService.googleLogin(
+        req.body?.credential,
+      );
+      res.cookie("accessToken", token, accessTokenCookieOptions);
+      res.cookie("refreshToken", refreshToken, refreshTokenCookieOptions);
+      return res.status(200).json({
+        success: true,
+        message: "Google login successful",
+        data: { ...data, token },
+      });
+    } catch (error) {
+      return next(error);
     }
   };
 
