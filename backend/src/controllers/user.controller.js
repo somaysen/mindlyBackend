@@ -46,6 +46,26 @@ class UserController {
       next(error);
     }
   };
+
+  getUserByAuthId = async(req,res,next) => {
+    try {
+      const authId = req.auth?.id || req.auth?._id;
+
+      if (!authId) {
+        throw new AppError("Unauthorized", 401);
+      }
+
+      const user = await userService.getUserByAuthId(authId);
+
+      return res.status(200).json({
+        success: true,
+        message: "User fetched successfully",
+        data: user,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export default new UserController();
