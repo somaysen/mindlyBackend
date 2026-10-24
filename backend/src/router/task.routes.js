@@ -17,4 +17,11 @@ router.get("/", authMiddleware, taskController.getTasks);
 
 router.get("/user", authMiddleware, taskController.getTasks);
 
+// GET, UPDATE, AND DELETE A TASK BY ID
+
+router.get("/:taskId", authMiddleware, taskController.getTaskById);
+router.patch("/update/:taskId", authMiddleware, taskController.updateTask);
+router.delete("/:taskId", authMiddleware, taskController.deleteTask);
+router.delete("/delete/:taskId", authMiddleware, taskController.deleteTask);
+
 export default router;

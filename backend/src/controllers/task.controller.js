@@ -53,6 +53,50 @@ class TaskController {
     }
   };
 
+  getTaskById = async (req, res, next) => {
+    try {
+      const authId = req.auth?.id || req.auth?._id;
+      if (!authId) throw new AppError("Unauthorized", 401);
+
+      const data = await taskService.getTaskById(authId, req.params.taskId);
+      return res.status(200).json({ success: true, data });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  updateTask = async (req, res, next) => {
+    try {
+      const authId = req.auth?.id || req.auth?._id;
+      if (!authId) throw new AppError("Unauthorized", 401);
+
+      const data = await taskService.updateTask(authId, req.params.taskId, req.body);
+      return res.status(200).json({
+        success: true,
+        message: "Task updated successfully",
+        data,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  deleteTask = async (req, res, next) => {
+    try {
+      const authId = req.auth?.id || req.auth?._id;
+      if (!authId) throw new AppError("Unauthorized", 401);
+
+      const data = await taskService.deleteTask(authId, req.params.taskId);
+      return res.status(200).json({
+        success: true,
+        message: "Task deleted successfully",
+        data,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
 }
 
 export default new TaskController();
