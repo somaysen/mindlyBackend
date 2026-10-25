@@ -76,6 +76,11 @@ const taskSchema = new mongoose.Schema(
       trim: true,
     },
 
+    completed: {
+      type: Boolean,
+      default: false,
+    },
+
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Auth",

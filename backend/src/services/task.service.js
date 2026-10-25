@@ -68,6 +68,7 @@ class TaskService {
     dueTime,
     priority,
     status,
+    completed,
     checklist,
     project,
   } = {}) {
@@ -97,6 +98,7 @@ class TaskService {
         dueTime: normalizeDueTime(dueTime),
         priority: priority || "medium",
         status: status || "todo",
+        completed: completed ?? false,
         checklist: normalizedChecklist,
         project: project || null,
       });
@@ -135,7 +137,7 @@ class TaskService {
     if (!taskId) throw new AppError("Task ID is required", 400);
 
     const allowedFields = [
-      "taskName", "description", "dueDate", "dueTime", "priority", "status", "checklist", "project",
+      "taskName", "description", "dueDate", "dueTime", "priority", "status", "completed", "checklist", "project",
     ];
     const updates = {};
     for (const field of allowedFields) {

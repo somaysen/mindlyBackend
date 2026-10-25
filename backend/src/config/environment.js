@@ -17,6 +17,8 @@ const config = {
   GMAIL_USER: process.env.GMAIL_USER,
   GMAIL_APP_PASSWORD: process.env.GMAIL_APP_PASSWORD,
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
+  OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+  OPENAI_MODEL: process.env.OPENAI_MODEL || "gpt-6-luna",
   CLOUDINARY_URL: process.env.CLOUDINARY_URL,
   CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME || process.env.CloudName,
   CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY || process.env.APIkey,

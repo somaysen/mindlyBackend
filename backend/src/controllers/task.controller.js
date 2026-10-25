@@ -18,6 +18,7 @@ class TaskController {
         dueTime: req.body.dueTime,
         priority: req.body.priority,
         status: req.body.status,
+        completed: req.body.completed,
         checklist: req.body.checklist,
         project: req.body.project,
       });

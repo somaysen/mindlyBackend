@@ -16,6 +16,8 @@ import NotificationRouter from "./router/notification.routes.js";
 import taskRouter from "./router/task.routes.js"
 import projectRouter from "./router/project.routes.js"
 import fileRouter from "./router/file.routes.js";
+import aiRouter from "./router/ai.routes.js";
+import ideaRouter from "./router/idea.routes.js";
 
 validateConfig();
 
@@ -118,6 +120,8 @@ app.use("/api/auth",authRouter);
 app.use("/api/user",userRouter);
 app.use("/api/notification",NotificationRouter);
 app.use("/api/task", taskRouter);
+app.use("/api/ai", aiRouter);
+app.use("/api/idea", ideaRouter);
 app.use("/api/file/project", fileRouter);
 app.use("/api/project", fileRouter);
 app.use("/api/project",projectRouter);
