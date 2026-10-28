@@ -16,11 +16,14 @@ router.get("/", authMiddleware, taskController.getTasks);
 // GET TASKS BY USER
 
 router.get("/user", authMiddleware, taskController.getTasks);
+router.get("/completed", authMiddleware, taskController.getCompletedTasks);
 
 // GET, UPDATE, AND DELETE A TASK BY ID
 
 router.get("/:taskId", authMiddleware, taskController.getTaskById);
+router.patch("/complete/:taskId", authMiddleware, taskController.completeTask);
 router.patch("/update/:taskId", authMiddleware, taskController.updateTask);
+router.put("/update/:taskId", authMiddleware, taskController.updateTask);
 router.delete("/:taskId", authMiddleware, taskController.deleteTask);
 router.delete("/delete/:taskId", authMiddleware, taskController.deleteTask);
 

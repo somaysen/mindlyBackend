@@ -96,10 +96,11 @@ app.use((req, res, next) => {
 });
 
 app.use((req, res, next) => {
-  if (
-    req.body !== undefined &&
-    (req.body === null || typeof req.body !== "object" || Array.isArray(req.body))
-  ) {
+  if (req.body === undefined) {
+    req.body = {};
+  }
+
+  if (req.body === null || typeof req.body !== "object" || Array.isArray(req.body)) {
     return next(new AppError("Request body must be a JSON object", 400));
   }
   return next();
@@ -120,6 +121,7 @@ app.use("/api/auth",authRouter);
 app.use("/api/user",userRouter);
 app.use("/api/notification",NotificationRouter);
 app.use("/api/task", taskRouter);
+app.use("/api/tast", taskRouter);
 app.use("/api/ai", aiRouter);
 app.use("/api/idea", ideaRouter);
 app.use("/api/file/project", fileRouter);

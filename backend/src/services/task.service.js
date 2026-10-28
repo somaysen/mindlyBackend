@@ -59,6 +59,25 @@ const normalizeDueTime = (dueTime) => {
   throw new AppError("Due time must be HH:mm or h:mm AM/PM", 400);
 };
 
+const normalizeCompletionState = ({ status, completed }) => {
+  if (status !== undefined && typeof status !== "string") {
+    throw new AppError("Task status must be a string", 400);
+  }
+  if (completed !== undefined && typeof completed !== "boolean") {
+    throw new AppError("Task completed must be a boolean", 400);
+  }
+
+  const normalizedStatus = status?.trim().toLowerCase();
+  const resolvedStatus = normalizedStatus ?? (completed === true ? "completed" : "todo");
+  const resolvedCompleted = completed ?? resolvedStatus === "completed";
+
+  if ((resolvedStatus === "completed") !== resolvedCompleted) {
+    throw new AppError("Task status and completed value must match", 400);
+  }
+
+  return { status: resolvedStatus, completed: resolvedCompleted };
+};
+
 class TaskService {
   async creatingTask({
     auth,
@@ -81,6 +100,7 @@ class TaskService {
     }
 
     const normalizedChecklist = normalizeChecklist(checklist);
+    const completionState = normalizeCompletionState({ status, completed });
 
     try {
       if (project) {
@@ -97,8 +117,7 @@ class TaskService {
         dueDate: dueDate || null,
         dueTime: normalizeDueTime(dueTime),
         priority: priority || "medium",
-        status: status || "todo",
-        completed: completed ?? false,
+        ...completionState,
         checklist: normalizedChecklist,
         project: project || null,
       });
@@ -113,9 +132,28 @@ class TaskService {
     }
 
     try {
-      return await TaskModel.find({ user }).sort({ createdAt: -1 });
+      return await TaskModel.find({
+        user,
+        completed: { $ne: true },
+        status: { $ne: "completed" },
+      }).sort({ createdAt: -1 });
     } catch (error) {
       throw handleTaskError(error, "Get tasks");
+    }
+  }
+
+  async getCompletedTasks({ user } = {}) {
+    if (!user) {
+      throw new AppError("User ID is required", 400);
+    }
+
+    try {
+      return await TaskModel.find({
+        user,
+        $or: [{ completed: true }, { status: "completed" }],
+      }).sort({ updatedAt: -1 });
+    } catch (error) {
+      throw handleTaskError(error, "Get completed tasks");
     }
   }
 
@@ -145,7 +183,10 @@ class TaskService {
     }
 
     if (Object.keys(updates).length === 0) {
-      throw new AppError("At least one task field is required", 400);
+      throw new AppError(
+        "Provide at least one task field to update: taskName, description, dueDate, dueTime, priority, status, completed, checklist, or project",
+        400,
+      );
     }
     if (updates.taskName !== undefined) {
       if (typeof updates.taskName !== "string" || !updates.taskName.trim()) {
@@ -161,6 +202,9 @@ class TaskService {
     }
     if (updates.checklist !== undefined) {
       updates.checklist = normalizeChecklist(updates.checklist);
+    }
+    if (updates.status !== undefined || updates.completed !== undefined) {
+      Object.assign(updates, normalizeCompletionState(updates));
     }
 
     try {
@@ -178,6 +222,23 @@ class TaskService {
       return task;
     } catch (error) {
       throw handleTaskError(error, "Update task");
+    }
+  }
+
+  async completeTask(user, taskId) {
+    if (!user) throw new AppError("User ID is required", 400);
+    if (!taskId) throw new AppError("Task ID is required", 400);
+
+    try {
+      const task = await TaskModel.findOneAndUpdate(
+        { _id: taskId, user },
+        { $set: { completed: true, status: "completed" } },
+        { returnDocument: "after", runValidators: true },
+      );
+      if (!task) throw new AppError("Task not found", 404);
+      return task;
+    } catch (error) {
+      throw handleTaskError(error, "Complete task");
     }
   }
 
