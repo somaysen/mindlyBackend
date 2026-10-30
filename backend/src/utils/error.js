@@ -6,6 +6,7 @@ class AppError extends Error {
     this.name = "AppError";
     this.statusCode = statusCode;
     this.success = false;
+    this.isOperational = true;
 
     Error.captureStackTrace(this, this.constructor);
   }
