@@ -45,14 +45,18 @@ const normalizeDueTime = (dueTime) => {
   }
 
   const value = dueTime.trim();
-  const twentyFourHourTime = value.match(/^([01]?\d|2[0-3]):([0-5]\d)(?::[0-5]\d)?$/);
+  const twentyFourHourTime = value.match(
+    /^([01]?\d|2[0-3]):([0-5]\d)(?::[0-5]\d)?$/,
+  );
   if (twentyFourHourTime) {
     return `${twentyFourHourTime[1].padStart(2, "0")}:${twentyFourHourTime[2]}`;
   }
 
   const twelveHourTime = value.match(/^(1[0-2]|0?[1-9]):([0-5]\d)\s*(AM|PM)$/i);
   if (twelveHourTime) {
-    const hour = Number(twelveHourTime[1]) % 12 + (twelveHourTime[3].toUpperCase() === "PM" ? 12 : 0);
+    const hour =
+      (Number(twelveHourTime[1]) % 12) +
+      (twelveHourTime[3].toUpperCase() === "PM" ? 12 : 0);
     return `${String(hour).padStart(2, "0")}:${twelveHourTime[2]}`;
   }
 
@@ -67,8 +71,11 @@ const normalizeCompletionState = ({ status, completed }) => {
     throw new AppError("Task completed must be a boolean", 400);
   }
 
-  const normalizedStatus = status?.trim().toLowerCase();
-  const resolvedStatus = normalizedStatus ?? (completed === true ? "completed" : "todo");
+  const requestedStatus = status?.trim().toLowerCase();
+  // The API accepts "pending" as the user-facing equivalent of the model's "todo".
+  const normalizedStatus = requestedStatus === "pending" ? "todo" : requestedStatus;
+  const resolvedStatus =
+    normalizedStatus ?? (completed === true ? "completed" : "todo");
   const resolvedCompleted = completed ?? resolvedStatus === "completed";
 
   if ((resolvedStatus === "completed") !== resolvedCompleted) {
@@ -174,12 +181,41 @@ class TaskService {
     if (!user) throw new AppError("User ID is required", 400);
     if (!taskId) throw new AppError("Task ID is required", 400);
 
+    // Accept the task fields directly or inside common API payload envelopes.
+    // Some clients send { data: {...} }, { task: {...} }, or { updates: {...} }.
+    let updateData = data;
+    for (
+      let depth = 0;
+      depth < 3 &&
+      updateData &&
+      typeof updateData === "object" &&
+      !Array.isArray(updateData);
+      depth += 1
+    ) {
+      const envelope = ["updates", "task", "data"].find(
+        (key) =>
+          updateData[key] &&
+          typeof updateData[key] === "object" &&
+          !Array.isArray(updateData[key]),
+      );
+      if (!envelope) break;
+      updateData = updateData[envelope];
+    }
+
     const allowedFields = [
-      "taskName", "description", "dueDate", "dueTime", "priority", "status", "completed", "checklist", "project",
+      "taskName",
+      "description",
+      "dueDate",
+      "dueTime",
+      "priority",
+      "status",
+      "completed",
+      "checklist",
+      "project",
     ];
     const updates = {};
     for (const field of allowedFields) {
-      if (data[field] !== undefined) updates[field] = data[field];
+      if (updateData?.[field] !== undefined) updates[field] = updateData[field];
     }
 
     if (Object.keys(updates).length === 0) {
@@ -194,7 +230,10 @@ class TaskService {
       }
       updates.taskName = updates.taskName.trim();
     }
-    if (updates.description !== undefined && typeof updates.description === "string") {
+    if (
+      updates.description !== undefined &&
+      typeof updates.description === "string"
+    ) {
       updates.description = updates.description.trim();
     }
     if (updates.dueTime !== undefined) {
@@ -209,7 +248,10 @@ class TaskService {
 
     try {
       if (updates.project) {
-        const ownedProject = await Project.exists({ _id: updates.project, user });
+        const ownedProject = await Project.exists({
+          _id: updates.project,
+          user,
+        });
         if (!ownedProject) throw new AppError("Project not found", 404);
       }
 

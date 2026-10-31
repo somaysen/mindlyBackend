@@ -28,12 +28,17 @@ class AiController {
       if (!hasTask && !hasIdea) {
         throw new AppError("Provide a task, an idea, or both", 400);
       }
-      if ((task !== undefined && typeof task !== "string") ||
-          (idea !== undefined && typeof idea !== "string")) {
+      if (
+        (task !== undefined && typeof task !== "string") ||
+        (idea !== undefined && typeof idea !== "string")
+      ) {
         throw new AppError("Task and idea must be strings", 400);
       }
       if (task?.length > 2000 || idea?.length > 2000) {
-        throw new AppError("Task and idea must be 2000 characters or fewer", 400);
+        throw new AppError(
+          "Task and idea must be 2000 characters or fewer",
+          400,
+        );
       }
 
       const data = await aiService.planTaskAndIdeas({
