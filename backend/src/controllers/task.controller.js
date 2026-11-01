@@ -67,6 +67,21 @@ class TaskController {
     }
   };
 
+  getTasksCreatedToday = async (req, res, next) => {
+    try {
+      const authId = req.auth?.id || req.auth?._id;
+      if (!authId) throw new AppError("Unauthorized", 401);
+
+      const data = await taskService.getTasksCreatedToday({
+        user: authId,
+        timezone: req.query.timezone,
+      });
+      return res.status(200).json({ success: true, data });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   getTaskById = async (req, res, next) => {
     try {
       const authId = req.auth?.id || req.auth?._id;

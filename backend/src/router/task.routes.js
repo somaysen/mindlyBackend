@@ -16,6 +16,7 @@ router.get("/", authMiddleware, taskController.getTasks);
 // GET TASKS BY USER
 
 router.get("/user", authMiddleware, taskController.getTasks);
+router.get("/today", authMiddleware, taskController.getTasksCreatedToday);
 router.get("/completed", authMiddleware, taskController.getCompletedTasks);
 
 // GET, UPDATE, AND DELETE A TASK BY ID

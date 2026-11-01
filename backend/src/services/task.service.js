@@ -2,6 +2,7 @@ import AppError from "../utils/error.js";
 import logger from "../utils/logger.js";
 import TaskModel from "../models/task.model.js";
 import Project from "../models/project.model.js";
+import config from "../config/environment.js";
 
 const handleTaskError = (error, action) => {
   if (error instanceof AppError) return error;
@@ -85,6 +86,37 @@ const normalizeCompletionState = ({ status, completed }) => {
   return { status: resolvedStatus, completed: resolvedCompleted };
 };
 
+const getUtcDateForZonedMidnight = (year, month, day, timezone) => {
+  const localDateAsUtc = Date.UTC(year, month - 1, day);
+  let utcDate = localDateAsUtc;
+
+  // Recalculate because the UTC offset can change at a daylight-saving boundary.
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hourCycle: "h23",
+    }).formatToParts(new Date(utcDate));
+    const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
+    const localDateAsFormattedUtc = Date.UTC(
+      Number(values.year),
+      Number(values.month) - 1,
+      Number(values.day),
+      Number(values.hour),
+      Number(values.minute),
+      Number(values.second),
+    );
+    utcDate += localDateAsUtc - localDateAsFormattedUtc;
+  }
+
+  return new Date(utcDate);
+};
+
 class TaskService {
   async creatingTask({
     auth,
@@ -161,6 +193,59 @@ class TaskService {
       }).sort({ updatedAt: -1 });
     } catch (error) {
       throw handleTaskError(error, "Get completed tasks");
+    }
+  }
+
+  async getTasksCreatedToday({
+    user,
+    timezone = config.SCHEDULE_TIME_ZONE,
+  } = {}) {
+    if (!user) {
+      throw new AppError("User ID is required", 400);
+    }
+
+    if (typeof timezone !== "string" || !timezone.trim()) {
+      throw new AppError("Timezone must be a valid IANA timezone", 400);
+    }
+
+    timezone = timezone.trim();
+    let formatter;
+    try {
+      formatter = new Intl.DateTimeFormat("en-US", { timeZone: timezone });
+    } catch {
+      throw new AppError("Timezone must be a valid IANA timezone", 400);
+    }
+
+    const now = new Date();
+    const dateParts = Object.fromEntries(
+      formatter
+        .formatToParts(now)
+        .map(({ type, value }) => [type, value]),
+    );
+    const localYear = Number(dateParts.year);
+    const localMonth = Number(dateParts.month);
+    const localDay = Number(dateParts.day);
+    const startOfToday = getUtcDateForZonedMidnight(
+      localYear,
+      localMonth,
+      localDay,
+      timezone,
+    );
+    const tomorrow = new Date(Date.UTC(localYear, localMonth - 1, localDay + 1));
+    const startOfTomorrow = getUtcDateForZonedMidnight(
+      tomorrow.getUTCFullYear(),
+      tomorrow.getUTCMonth() + 1,
+      tomorrow.getUTCDate(),
+      timezone,
+    );
+
+    try {
+      return await TaskModel.find({
+        user,
+        createdAt: { $gte: startOfToday, $lt: startOfTomorrow },
+      }).sort({ createdAt: -1 });
+    } catch (error) {
+      throw handleTaskError(error, "Get today's tasks");
     }
   }
 

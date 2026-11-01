@@ -18,6 +18,7 @@ import projectRouter from "./router/project.routes.js"
 import fileRouter from "./router/file.routes.js";
 import aiRouter from "./router/ai.routes.js";
 import ideaRouter from "./router/idea.routes.js";
+import scheduleRoutes from "./router/schedule.routes.js"
 
 validateConfig();
 
@@ -127,6 +128,7 @@ app.use("/api/idea", ideaRouter);
 app.use("/api/file/project", fileRouter);
 app.use("/api/project", fileRouter);
 app.use("/api/project",projectRouter);
+app.use("/api/schedule", scheduleRoutes);
 
 app.get("/", (_req, res) => {
   return res.status(200).json({ message: "Mindly API is running" });

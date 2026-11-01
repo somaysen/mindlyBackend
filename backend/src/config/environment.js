@@ -34,6 +34,7 @@ const config = {
   AUTH_RATE_LIMIT_MAX_REQUESTS: Number(process.env.AUTH_RATE_LIMIT_MAX_REQUESTS || 20),
   JSON_BODY_LIMIT: process.env.JSON_BODY_LIMIT || "1mb",
   TRUST_PROXY: process.env.TRUST_PROXY || "",
+  SCHEDULE_TIME_ZONE: process.env.SCHEDULE_TIME_ZONE || "Asia/Kolkata",
 };
 
 export function validateConfig() {
@@ -76,6 +77,11 @@ export function validateConfig() {
   }
   if (!Number.isInteger(config.AUTH_RATE_LIMIT_MAX_REQUESTS) || config.AUTH_RATE_LIMIT_MAX_REQUESTS < 1) {
     errors.push("AUTH_RATE_LIMIT_MAX_REQUESTS must be a positive integer");
+  }
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: config.SCHEDULE_TIME_ZONE });
+  } catch {
+    errors.push("SCHEDULE_TIME_ZONE must be a valid IANA timezone");
   }
   if (!Number.isFinite(config.AUTH_TOKEN_TTL_HOURS) || config.AUTH_TOKEN_TTL_HOURS <= 0) {
     errors.push("AUTH_TOKEN_TTL_HOURS must be a positive number");
