@@ -84,6 +84,58 @@ class CanvasController {
       return next(error);
     }
   };
+
+  listMembers = async (req, res, next) => {
+    try {
+      const members = await canvasService.listMembers(
+        req.params.canvasId,
+        this.getUserId(req),
+      );
+      return this.respond(res, members);
+    } catch (error) {
+      return next(error);
+    }
+  };
+
+  inviteMember = async (req, res, next) => {
+    try {
+      const member = await canvasService.inviteMember(
+        req.params.canvasId,
+        this.getUserId(req),
+        req.body,
+      );
+      return this.respond(res, member, 201);
+    } catch (error) {
+      return next(error);
+    }
+  };
+
+  updateMemberRole = async (req, res, next) => {
+    try {
+      const member = await canvasService.updateMemberRole(
+        req.params.canvasId,
+        this.getUserId(req),
+        req.params.memberId,
+        req.body.role,
+      );
+      return this.respond(res, member);
+    } catch (error) {
+      return next(error);
+    }
+  };
+
+  removeMember = async (req, res, next) => {
+    try {
+      const result = await canvasService.removeMember(
+        req.params.canvasId,
+        this.getUserId(req),
+        req.params.memberId,
+      );
+      return this.respond(res, result);
+    } catch (error) {
+      return next(error);
+    }
+  };
 }
 
 export default new CanvasController();

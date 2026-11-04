@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { TLSocketRoom } from "@tldraw/sync-core";
 import jwt from "jsonwebtoken";
-import { WebSocketServer } from "ws";
+import WebSocket, { WebSocketServer } from "ws";
 import CanvasModel from "../models/CanvasModel.js";
 import config from "../config/environment.js";
 import AppError from "../utils/error.js";
@@ -65,12 +65,16 @@ class CanvasSyncService {
       }
 
       entry.closed = true;
-      void this.persistRoomSnapshot(entry, true).finally(() => {
-        entry.room.close();
-        if (this.rooms.get(entry.canvasId) === entry) {
-          this.rooms.delete(entry.canvasId);
-        }
-      });
+      void this.persistRoomSnapshot(entry, true)
+        .catch(() => {
+          // persistRoomSnapshot logs persistence errors before rejecting.
+        })
+        .finally(() => {
+          entry.room.close();
+          if (this.rooms.get(entry.canvasId) === entry) {
+            this.rooms.delete(entry.canvasId);
+          }
+        });
     }, 60_000);
     entry.evictionTimer.unref();
   }
@@ -144,6 +148,7 @@ class CanvasSyncService {
           canvasId,
           room,
           sockets: new Set(),
+          socketUsers: new Map(),
           pendingWrites: Promise.resolve(),
           evictionTimer: null,
           closed: false,
@@ -225,24 +230,57 @@ class CanvasSyncService {
       throw new AppError("Canvas sync is unavailable", 503);
     }
 
+    const currentCanvas = await CanvasModel.findById(canvasId)
+      .select("ownerId members")
+      .lean();
+    if (!currentCanvas) throw new AppError("Canvas not found", 404);
+    const isCurrentOwner = currentCanvas.ownerId.toString() === claims.sub;
+    const currentMember = (currentCanvas.members || []).find(
+      (item) => item.userId?.toString() === claims.sub,
+    );
+    if (!isCurrentOwner && !currentMember) {
+      throw new AppError("You don't have access to this canvas", 403);
+    }
+    const currentRole = isCurrentOwner ? "owner" : currentMember.role;
+    if (!["owner", "editor", "viewer"].includes(currentRole)) {
+      throw new AppError("Canvas role is invalid", 403);
+    }
+
     this.websocketServer.handleUpgrade(request, socket, head, (clientSocket) => {
       try {
         entry.sockets.add(clientSocket);
-        clientSocket.once("close", () => entry.sockets.delete(clientSocket));
-        clientSocket.once("error", () => entry.sockets.delete(clientSocket));
+        entry.socketUsers.set(clientSocket, claims.sub);
+        const removeSocket = () => {
+          entry.sockets.delete(clientSocket);
+          entry.socketUsers.delete(clientSocket);
+        };
+        clientSocket.once("close", removeSocket);
+        clientSocket.once("error", removeSocket);
         entry.room.handleSocketConnect({
           sessionId: randomUUID(),
           socket: clientSocket,
-          isReadonly: role === "viewer",
+          isReadonly: currentRole === "viewer",
         });
       } catch (error) {
         logger.error(
           `Canvas ${canvasId} WebSocket connection failed: ${error.message}`,
         );
         entry.sockets.delete(clientSocket);
+        entry.socketUsers.delete(clientSocket);
         clientSocket.close(1011, "Canvas sync is unavailable");
       }
     });
+  }
+
+  closeCanvasUserSessions(canvasId, userId, reason) {
+    const entry = this.rooms.get(canvasId);
+    if (!entry || entry.closed) return;
+
+    for (const [socket, connectedUserId] of entry.socketUsers) {
+      if (connectedUserId === userId && socket.readyState === WebSocket.OPEN) {
+        socket.close(1008, reason);
+      }
+    }
   }
 
   attachCanvasWebSocket(server) {

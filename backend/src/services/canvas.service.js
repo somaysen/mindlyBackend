@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import AppError from "../utils/error.js";
 import config from "../config/environment.js";
 import Project from "../models/project.model.js";
+import Auth from "../models/auth.model.js";
 import CanvasModel from "../models/CanvasModel.js";
 import canvasSyncService from "./canvasSync.service.js";
 
@@ -43,12 +44,9 @@ class CanvasService {
     return title.trim();
   }
 
-  async requireCanvas(canvasId, { includeSnapshot = false } = {}) {
+  async requireCanvas(canvasId) {
     this.validateObjectId(canvasId, "canvas ID");
-    const projection = includeSnapshot
-      ? `${canvasProjection} snapshot`
-      : canvasProjection;
-    const canvas = await CanvasModel.findById(canvasId).select(projection);
+    const canvas = await CanvasModel.findById(canvasId).select(canvasProjection);
     if (!canvas) throw new AppError("Canvas not found", 404);
     return canvas;
   }
@@ -58,6 +56,124 @@ class CanvasService {
     const role = this.getUserRole(canvas, userId);
     if (!role) throw new AppError("You don't have access to this canvas", 403);
     return { canvas, role };
+  }
+
+  async requireOwner(canvasId, userId) {
+    const canvas = await this.requireCanvas(canvasId);
+    if (canvas.ownerId.toString() !== userId) {
+      throw new AppError("Only the canvas owner can manage members", 403);
+    }
+    return canvas;
+  }
+
+  validateMemberRole(role) {
+    if (role !== "editor" && role !== "viewer") {
+      throw new AppError("Canvas member role must be editor or viewer", 400);
+    }
+    return role;
+  }
+
+  async getMemberDetails(userIds) {
+    const accounts = await Auth.find({ _id: { $in: userIds } })
+      .select("email")
+      .lean();
+    return new Map(
+      accounts.map((account) => [account._id.toString(), account.email]),
+    );
+  }
+
+  async listMembers(canvasId, ownerId) {
+    const canvas = await this.requireOwner(canvasId, ownerId);
+    const memberIds = [
+      canvas.ownerId.toString(),
+      ...(canvas.members || [])
+        .map((member) => member.userId?.toString())
+        .filter((memberId) => memberId && memberId !== ownerId),
+    ];
+    const emails = await this.getMemberDetails(memberIds);
+    return [
+      { userId: ownerId, email: emails.get(ownerId) || "", role: "owner" },
+      ...(canvas.members || [])
+        .filter((member) => member.userId && member.userId.toString() !== ownerId)
+        .map((member) => {
+          const userId = member.userId.toString();
+          return {
+            userId,
+            email: emails.get(userId) || "",
+            role: member.role,
+          };
+        }),
+    ];
+  }
+
+  async inviteMember(canvasId, ownerId, { email, role = "editor" } = {}) {
+    const normalizedEmail =
+      typeof email === "string" ? email.trim().toLowerCase() : "";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      throw new AppError("A valid member email is required", 400);
+    }
+    const memberRole = this.validateMemberRole(role);
+    const canvas = await this.requireOwner(canvasId, ownerId);
+    const account = await Auth.findOne({ email: normalizedEmail }).select("_id email");
+    if (!account) throw new AppError("Registered user not found", 404);
+    const memberId = account._id.toString();
+    if (memberId === ownerId) {
+      throw new AppError("The canvas owner is already a member", 400);
+    }
+
+    const existingMember = canvas.members.find(
+      (member) => member.userId?.toString() === memberId,
+    );
+    if (existingMember) {
+      existingMember.role = memberRole;
+    } else {
+      canvas.members.push({ userId: account._id, role: memberRole });
+    }
+    await canvas.save();
+    canvasSyncService.closeCanvasUserSessions(
+      canvasId,
+      memberId,
+      "Canvas access changed. Reconnect to continue.",
+    );
+    return { userId: memberId, email: account.email, role: memberRole };
+  }
+
+  async updateMemberRole(canvasId, ownerId, memberId, role) {
+    this.validateObjectId(memberId, "member ID");
+    const memberRole = this.validateMemberRole(role);
+    const canvas = await this.requireOwner(canvasId, ownerId);
+    const member = canvas.members.find(
+      (item) => item.userId?.toString() === memberId,
+    );
+    if (!member) throw new AppError("Canvas member not found", 404);
+
+    member.role = memberRole;
+    await canvas.save();
+    canvasSyncService.closeCanvasUserSessions(
+      canvasId,
+      memberId,
+      "Canvas access changed. Reconnect to continue.",
+    );
+    const emails = await this.getMemberDetails([memberId]);
+    return { userId: memberId, email: emails.get(memberId) || "", role: memberRole };
+  }
+
+  async removeMember(canvasId, ownerId, memberId) {
+    this.validateObjectId(memberId, "member ID");
+    const canvas = await this.requireOwner(canvasId, ownerId);
+    const memberIndex = canvas.members.findIndex(
+      (member) => member.userId?.toString() === memberId,
+    );
+    if (memberIndex === -1) throw new AppError("Canvas member not found", 404);
+
+    canvas.members.splice(memberIndex, 1);
+    await canvas.save();
+    canvasSyncService.closeCanvasUserSessions(
+      canvasId,
+      memberId,
+      "Canvas access has been revoked.",
+    );
+    return { userId: memberId };
   }
 
   async create(userId, { projectId, title } = {}) {
@@ -95,11 +211,12 @@ class CanvasService {
   }
 
   async getForUser(canvasId, userId) {
-    const canvas = await this.requireCanvas(canvasId, { includeSnapshot: true });
-    if (!this.getUserRole(canvas, userId)) {
+    const canvas = await this.requireCanvas(canvasId);
+    const role = this.getUserRole(canvas, userId);
+    if (!role) {
       throw new AppError("You don't have access to this canvas", 403);
     }
-    return canvas;
+    return { ...canvas.toObject(), role };
   }
 
   async rename(canvasId, userId, title) {
