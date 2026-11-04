@@ -4,8 +4,10 @@ import { connectDB, disconnectDB } from "./src/config/database.js";
 import { connectRedis, disconnectRedis } from "./src/config/redis.js";
 import config from "./src/config/environment.js";
 import { createServer } from "node:http";
+import canvasSyncService from "./src/services/canvasSync.service.js";
 
 const server = createServer(app);
+canvasSyncService.attachCanvasWebSocket(server);
 
 async function startServer() {
   try {
@@ -25,6 +27,13 @@ let shuttingDown = false;
 async function shutdown(exitCode = 0) {
   if (shuttingDown) return;
   shuttingDown = true;
+
+  try {
+    await canvasSyncService.shutdown();
+  } catch (error) {
+    logger.error(`Error during canvas sync shutdown: ${error.message}`);
+    exitCode = 1;
+  }
 
   if (server.listening) {
     await new Promise((resolve) => server.close(resolve));

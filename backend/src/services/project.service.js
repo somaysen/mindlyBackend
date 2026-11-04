@@ -4,6 +4,7 @@ import Project from "../models/project.model.js";
 import FileModel from "../models/file.model.js";
 import TaskModel from "../models/task.model.js";
 import Idea from "../models/idea.model.js";
+import canvasService from "./canvas.service.js";
 import { deleteFile as deleteCloudinaryFile } from "../config/fileStore.js";
 
 const handleProjectError = (error, action) => {
@@ -118,11 +119,11 @@ class ProjectService {
       const files = await FileModel.find({ userId, projectId })
         .select("cloudinaryPublicId cloudinaryResourceType")
         .lean();
-
       await Promise.all([
         FileModel.deleteMany({ userId, projectId }),
         TaskModel.deleteMany({ user: userId, project: projectId }),
         Idea.updateMany({ user: userId, project: projectId }, { $set: { project: null } }),
+        canvasService.deleteForProject(projectId),
       ]);
 
       const cleanupResults = await Promise.allSettled(

@@ -1,7 +1,14 @@
 import dotenv from "dotenv";
+import { randomBytes } from "node:crypto";
 import { fileURLToPath } from "node:url";
 
 dotenv.config({ path: fileURLToPath(new URL("../../.env", import.meta.url)) });
+
+const syncTicketSecret =
+  process.env.SYNC_TICKET_SECRET ||
+  (process.env.NODE_ENV === "production"
+    ? undefined
+    : randomBytes(32).toString("hex"));
 
 const config = {
   MONGO_URI: process.env.MONGO_URI,
@@ -14,6 +21,7 @@ const config = {
   AUTH_TOKEN_TTL_HOURS: Number(process.env.AUTH_TOKEN_TTL_HOURS || 1),
   JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET || process.env.REFRESH_SECRET,
   JWT_REFRESH_TTL_DAYS: Number(process.env.JWT_REFRESH_TTL_DAYS || 7),
+  SYNC_TICKET_SECRET: syncTicketSecret,
   GMAIL_USER: process.env.GMAIL_USER,
   GMAIL_APP_PASSWORD: process.env.GMAIL_APP_PASSWORD,
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
@@ -99,6 +107,15 @@ export function validateConfig() {
     }
     if (config.AUTH_TOKEN_SECRET && config.AUTH_TOKEN_SECRET === config.JWT_REFRESH_SECRET) {
       errors.push("Access and refresh token secrets must be different");
+    }
+    if (!config.SYNC_TICKET_SECRET || config.SYNC_TICKET_SECRET.length < 32) {
+      errors.push("SYNC_TICKET_SECRET must contain at least 32 characters in production");
+    }
+    if (
+      config.SYNC_TICKET_SECRET &&
+      [config.AUTH_TOKEN_SECRET, config.JWT_REFRESH_SECRET].includes(config.SYNC_TICKET_SECRET)
+    ) {
+      errors.push("Canvas sync and authentication secrets must be different");
     }
     if (config.SKIP_REDIS) errors.push("SKIP_REDIS cannot be enabled in production");
     if (!config.REDIS_URL && !process.env.REDIS_HOST) {
