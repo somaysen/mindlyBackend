@@ -110,16 +110,21 @@ app.use((req, res, next) => {
 
 // Connect lazily for serverless deployments and reuse the cached connections
 // across warm invocations. The same middleware is a no-op after server.js boots.
-app.use("/api", async (_req, _res, next) => {
+const requiredServicesMiddleware = async (_req, _res, next) => {
   try {
     await connectRequiredServices();
     return next();
   } catch (error) {
     return next(error);
   }
-});
+};
+
+app.use("/api", requiredServicesMiddleware);
+// Some production proxies strip the `/api` prefix before forwarding requests.
+app.use("/auth", requiredServicesMiddleware);
 
 app.use("/api/auth",authRouter);
+app.use("/auth", authRouter);
 app.use("/api/user",userRouter);
 app.use("/api/notification",NotificationRouter);
 app.use("/api/task", taskRouter);
