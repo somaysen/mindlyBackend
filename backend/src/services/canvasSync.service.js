@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import WebSocket, { WebSocketServer } from "ws";
 import CanvasModel from "../models/CanvasModel.js";
 import config from "../config/environment.js";
+import { connectDB } from "../config/database.js";
 import AppError from "../utils/error.js";
 import logger from "../utils/logger.js";
 
@@ -107,7 +108,7 @@ class CanvasSyncService {
       });
   }
 
-  async getOrCreateRoom(canvasId) {
+  async getOrCreateRoom(canvasId, initialSnapshot) {
     const current = this.rooms.get(canvasId);
     if (current && !current.closed) {
       clearTimeout(current.evictionTimer);
@@ -116,19 +117,24 @@ class CanvasSyncService {
     if (current?.closed) {
       await current.pendingWrites;
       if (this.rooms.get(canvasId) === current) this.rooms.delete(canvasId);
+      initialSnapshot = undefined;
     }
 
     let roomPromise = this.roomLoads.get(canvasId);
     if (!roomPromise) {
       roomPromise = (async () => {
-        const canvas = await CanvasModel.findById(canvasId)
-          .select("snapshot")
-          .lean();
-        if (!canvas) throw new AppError("Canvas not found", 404);
+        let snapshot = initialSnapshot;
+        if (snapshot === undefined) {
+          const canvas = await CanvasModel.findById(canvasId)
+            .select("snapshot")
+            .lean();
+          if (!canvas) throw new AppError("Canvas not found", 404);
+          snapshot = canvas.snapshot;
+        }
 
         let entry;
         const room = new TLSocketRoom({
-          ...(canvas.snapshot ? { initialSnapshot: canvas.snapshot } : {}),
+          ...(snapshot ? { initialSnapshot: snapshot } : {}),
           onDataChange: () => {
             void this.persistRoomSnapshot(entry).catch(() => {});
           },
@@ -188,7 +194,7 @@ class CanvasSyncService {
       throw new AppError("Invalid WebSocket URL", 400);
     }
 
-    const ticket = url.searchParams.get("ticket");
+    const ticket = url.searchParams.get("token") || url.searchParams.get("ticket");
     if (!ticket) throw new AppError("Canvas sync ticket is required", 401);
 
     let claims;
@@ -210,7 +216,10 @@ class CanvasSyncService {
       throw new AppError("Canvas sync ticket is invalid", 401);
     }
 
-    const canvas = await CanvasModel.findById(canvasId).select("ownerId members");
+    await connectDB();
+    const canvas = await CanvasModel.findById(canvasId)
+      .select("ownerId members snapshot")
+      .lean();
     if (!canvas) throw new AppError("Canvas not found", 404);
     const isOwner = canvas.ownerId.toString() === claims.sub;
     const member = (canvas.members || []).find(
@@ -225,7 +234,7 @@ class CanvasSyncService {
       throw new AppError("Canvas role is invalid", 403);
     }
 
-    const entry = await this.getOrCreateRoom(canvasId);
+    const entry = await this.getOrCreateRoom(canvasId, canvas.snapshot);
     if (this.shuttingDown || entry.closed) {
       throw new AppError("Canvas sync is unavailable", 503);
     }
