@@ -14,8 +14,9 @@ export async function connectDB() {
   }
 
   connectionPromise = mongoose
-    .connect(MONGO_URI, { serverSelectionTimeoutMS: 5000 })
+    .connect(MONGO_URI)
     .then(() => {
+      connectionPromise = undefined;
       logger.info("MongoDB connected successfully");
       return mongoose.connection;
     })

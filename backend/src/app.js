@@ -123,7 +123,6 @@ app.use("/api/auth",authRouter);
 app.use("/api/user",userRouter);
 app.use("/api/notification",NotificationRouter);
 app.use("/api/task", taskRouter);
-app.use("/api/tast", taskRouter);
 app.use("/api/ai", aiRouter);
 app.use("/api/idea", ideaRouter);
 app.use("/api/file/project", fileRouter);
