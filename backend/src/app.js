@@ -124,7 +124,7 @@ app.use("/api", requiredServicesMiddleware);
 app.use("/auth", requiredServicesMiddleware);
 
 app.use("/api/auth",authRouter);
-app.use("/auth", authRouter);
+// app.use("/auth", authRouter);
 app.use("/api/user",userRouter);
 app.use("/api/notification",NotificationRouter);
 app.use("/api/task", taskRouter);
