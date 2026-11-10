@@ -1,9 +1,4 @@
-import config from "./environment.js";
-
-const allowedOrigins = (config.ALLOWED_ORIGINS || "")
-  .split(",")
-  .map((origin) => origin.trim().replace(/\/$/, ""))
-  .filter(Boolean);
+import { isAllowedOrigin } from "./origins.js";
 
 export const corsOptions = {
   origin: (origin, callback) => {
@@ -12,18 +7,7 @@ export const corsOptions = {
       return callback(null, true);
     }
 
-    const normalizedOrigin = origin.replace(/\/$/, "");
-
-    // Allow localhost during development only.
-    if (
-      config.NODE_ENV !== "production" &&
-      /^http:\/\/localhost(?::\d+)?$/.test(normalizedOrigin)
-    ) {
-      return callback(null, true);
-    }
-
-    // Allow configured frontend origins.
-    if (allowedOrigins.includes(normalizedOrigin)) {
+    if (isAllowedOrigin(origin)) {
       return callback(null, true);
     }
 

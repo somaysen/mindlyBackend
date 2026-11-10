@@ -5,6 +5,7 @@ import mongoose from "mongoose";
 
 import config, { validateConfig } from "./config/environment.js";
 import { corsOptions } from "./config/corsOption.js";
+import { isAllowedOrigin } from "./config/origins.js";
 import { connectDB } from "./config/database.js";
 import { connectRedis, redisClient } from "./config/redis.js";
 import AppError from "./utils/error.js";
@@ -72,14 +73,6 @@ app.use(cors(corsOptions));
 app.use(express.urlencoded({ extended: false, limit: config.JSON_BODY_LIMIT }));
 app.use(express.json({ limit: config.JSON_BODY_LIMIT }));
 
-const cookieMutationOrigins = new Set([
-  ...config.ALLOWED_ORIGINS.split(",").map((origin) => origin.trim()).filter(Boolean),
-]);
-try {
-  cookieMutationOrigins.add(new URL(config.FRONTEND_URL).origin);
-} catch {
-  // Invalid production URLs are rejected by deployment configuration checks.
-}
 app.use((req, res, next) => {
   const isMutation = ["POST", "PUT", "PATCH", "DELETE"].includes(req.method);
   const usesCookieAuth = req.cookies?.accessToken || req.cookies?.refreshToken;
@@ -89,7 +82,7 @@ app.use((req, res, next) => {
     isMutation &&
     usesCookieAuth &&
     origin &&
-    !cookieMutationOrigins.has(origin)
+    !isAllowedOrigin(origin)
   ) {
     return next(new AppError("Request origin is not allowed", 403));
   }

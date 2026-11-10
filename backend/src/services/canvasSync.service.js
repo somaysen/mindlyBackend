@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import WebSocket, { WebSocketServer } from "ws";
 import CanvasModel from "../models/CanvasModel.js";
 import config from "../config/environment.js";
+import { isAllowedOrigin } from "../config/origins.js";
 import { connectDB } from "../config/database.js";
 import AppError from "../utils/error.js";
 import logger from "../utils/logger.js";
@@ -19,21 +20,6 @@ class CanvasSyncService {
     this.rooms = new Map();
     this.roomLoads = new Map();
     this.shuttingDown = false;
-  }
-
-  getAllowedOrigins() {
-    const origins = new Set(
-      config.ALLOWED_ORIGINS
-        .split(",")
-        .map((origin) => origin.trim())
-        .filter(Boolean),
-    );
-    try {
-      origins.add(new URL(config.FRONTEND_URL).origin);
-    } catch {
-      // The app validates FRONTEND_URL during startup.
-    }
-    return origins;
   }
 
   rejectUpgrade(socket, statusCode, message) {
@@ -183,7 +169,7 @@ class CanvasSyncService {
     }
 
     const origin = request.headers.origin;
-    if (origin && !this.getAllowedOrigins().has(origin)) {
+    if (origin && !isAllowedOrigin(origin)) {
       throw new AppError("Request origin is not allowed", 403);
     }
 
