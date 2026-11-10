@@ -12,7 +12,7 @@ export const corsOptions = {
     }
 
     // Log the rejected origin for debugging.
-    console.warn(`CORS rejected origin: ${normalizedOrigin}`);
+    console.warn(`CORS rejected origin: ${origin}`);
 
     return callback(null, false);
   },
