@@ -18,6 +18,12 @@ router.patch(
   NotificationController.updateNotificationSettings,
 );
 
+router.patch(
+  "/settings",
+  authMiddleware,
+  NotificationController.updateNotificationSettings,
+);
+
 router.get("/settings", authMiddleware, NotificationController.getNotificationSettings);
 
 export default router;
