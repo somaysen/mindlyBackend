@@ -34,7 +34,7 @@ class ProjectService {
   async createProject(userId, data = {}) {
     requireUserId(userId);
 
-    const projectName = data.projectName;
+    const projectName = data.projectName ?? data.name ?? data.project_name;
     if (typeof projectName !== "string" || !projectName.trim()) {
       throw new AppError("Project name is required", 400);
     }
