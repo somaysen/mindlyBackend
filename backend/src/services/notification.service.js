@@ -1,5 +1,22 @@
 
 import Notification from "../models/notification.model.js";
+import AppError from "../utils/error.js";
+
+const notificationChannels = [
+  "taskReminders",
+  "focusSessions",
+  "weeklyReflections",
+  "emailNotifications",
+  "pushNotifications",
+];
+
+const getEnabledValue = (value) => {
+  if (typeof value === "boolean") return value;
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return typeof value.enabled === "boolean" ? value.enabled : undefined;
+  }
+  return undefined;
+};
 
 class NotificationService {
   // Get notification settings
@@ -18,34 +35,34 @@ class NotificationService {
 
   // Create / update notification settings
   updateNotificationSettings = async (userId, data = {}) => {
+    // Accept both the API's flat boolean fields and the nested channel objects
+    // returned by GET /settings (for example, { taskReminders: { enabled: false } }).
+    let payload = data;
+    for (let depth = 0; depth < 2; depth += 1) {
+      if (!payload || typeof payload !== "object" || Array.isArray(payload)) break;
+      const wrappedPayload = payload.settings ?? payload.data;
+      if (!wrappedPayload || typeof wrappedPayload !== "object" || Array.isArray(wrappedPayload)) break;
+      payload = wrappedPayload;
+    }
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+      throw new AppError("Notification settings must be a JSON object", 400);
+    }
+
     const allowedData = {};
 
-    if (typeof data.notificationsEnabled === "boolean") {
-      allowedData.notificationsEnabled =
-        data.notificationsEnabled;
+    if (typeof payload.notificationsEnabled === "boolean") {
+      allowedData.notificationsEnabled = payload.notificationsEnabled;
     }
 
-    if (typeof data.taskReminders === "boolean") {
-      allowedData["taskReminders.enabled"] =
-        data.taskReminders;
+    for (const channel of notificationChannels) {
+      const enabled = getEnabledValue(payload[channel]);
+      if (typeof enabled === "boolean") {
+        allowedData[`${channel}.enabled`] = enabled;
+      }
     }
 
-    if (typeof data.focusSessions === "boolean") {
-      allowedData["focusSessions.enabled"] =
-        data.focusSessions;
-    }
-
-    if (typeof data.weeklyReflections === "boolean") {
-      allowedData["weeklyReflections.enabled"] =
-        data.weeklyReflections;
-    }
-
-    if (typeof data.emailNotifications === "boolean") {
-      allowedData["emailNotifications.enabled"] = data.emailNotifications;
-    }
-
-    if (typeof data.pushNotifications === "boolean") {
-      allowedData["pushNotifications.enabled"] = data.pushNotifications;
+    if (Object.keys(allowedData).length === 0) {
+      throw new AppError("Provide at least one valid notification setting", 400);
     }
 
     const settings = await Notification.findOneAndUpdate(
