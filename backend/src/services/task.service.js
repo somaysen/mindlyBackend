@@ -2,6 +2,7 @@ import AppError from "../utils/error.js";
 import logger from "../utils/logger.js";
 import TaskModel from "../models/task.model.js";
 import Project from "../models/project.model.js";
+import notificationService from "./notification.service.js";
 import config from "../config/environment.js";
 
 const handleTaskError = (error, action) => {
@@ -74,7 +75,8 @@ const normalizeCompletionState = ({ status, completed }) => {
 
   const requestedStatus = status?.trim().toLowerCase();
   // The API accepts "pending" as the user-facing equivalent of the model's "todo".
-  const normalizedStatus = requestedStatus === "pending" ? "todo" : requestedStatus;
+  const normalizedStatus =
+    requestedStatus === "pending" ? "todo" : requestedStatus;
   const resolvedStatus =
     normalizedStatus ?? (completed === true ? "completed" : "todo");
   const resolvedCompleted = completed ?? resolvedStatus === "completed";
@@ -102,7 +104,9 @@ const getUtcDateForZonedMidnight = (year, month, day, timezone) => {
       second: "2-digit",
       hourCycle: "h23",
     }).formatToParts(new Date(utcDate));
-    const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
+    const values = Object.fromEntries(
+      parts.map(({ type, value }) => [type, value]),
+    );
     const localDateAsFormattedUtc = Date.UTC(
       Number(values.year),
       Number(values.month) - 1,
@@ -149,7 +153,7 @@ class TaskService {
         }
       }
 
-      return await TaskModel.create({
+      const task = await TaskModel.create({
         user: auth,
         taskName: taskName.trim(),
         description: typeof description === "string" ? description.trim() : "",
@@ -160,6 +164,9 @@ class TaskService {
         checklist: normalizedChecklist,
         project: project || null,
       });
+
+      await notificationService.scheduleTaskReminder(task);
+      return task;
     } catch (error) {
       throw handleTaskError(error, "Create task");
     }
@@ -218,9 +225,7 @@ class TaskService {
 
     const now = new Date();
     const dateParts = Object.fromEntries(
-      formatter
-        .formatToParts(now)
-        .map(({ type, value }) => [type, value]),
+      formatter.formatToParts(now).map(({ type, value }) => [type, value]),
     );
     const localYear = Number(dateParts.year);
     const localMonth = Number(dateParts.month);
@@ -231,7 +236,9 @@ class TaskService {
       localDay,
       timezone,
     );
-    const tomorrow = new Date(Date.UTC(localYear, localMonth - 1, localDay + 1));
+    const tomorrow = new Date(
+      Date.UTC(localYear, localMonth - 1, localDay + 1),
+    );
     const startOfTomorrow = getUtcDateForZonedMidnight(
       tomorrow.getUTCFullYear(),
       tomorrow.getUTCMonth() + 1,
@@ -346,6 +353,7 @@ class TaskService {
         { returnDocument: "after", runValidators: true },
       );
       if (!task) throw new AppError("Task not found", 404);
+      await notificationService.scheduleTaskReminder(task);
       return task;
     } catch (error) {
       throw handleTaskError(error, "Update task");
@@ -363,6 +371,7 @@ class TaskService {
         { returnDocument: "after", runValidators: true },
       );
       if (!task) throw new AppError("Task not found", 404);
+      await notificationService.cancelTaskReminder(user, task._id);
       return task;
     } catch (error) {
       throw handleTaskError(error, "Complete task");
@@ -376,6 +385,7 @@ class TaskService {
     try {
       const task = await TaskModel.findOneAndDelete({ _id: taskId, user });
       if (!task) throw new AppError("Task not found", 404);
+      await notificationService.cancelTaskReminder(user, task._id);
       return task;
     } catch (error) {
       throw handleTaskError(error, "Delete task");
