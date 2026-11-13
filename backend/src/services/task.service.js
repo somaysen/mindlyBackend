@@ -144,6 +144,22 @@ class TaskService {
 
     const normalizedChecklist = normalizeChecklist(checklist);
     const completionState = normalizeCompletionState({ status, completed });
+    const hasDueDate =
+      dueDate !== undefined && dueDate !== null && dueDate !== "";
+    const normalizedDueTime = normalizeDueTime(dueTime);
+    const creationDateTime =
+      !hasDueDate && normalizedDueTime === null ? new Date() : null;
+    const taskDueDate = hasDueDate ? dueDate : creationDateTime;
+    const taskDueTime =
+      normalizedDueTime ??
+      (creationDateTime
+        ? new Intl.DateTimeFormat("en-GB", {
+            timeZone: config.SCHEDULE_TIME_ZONE,
+            hour: "2-digit",
+            minute: "2-digit",
+            hourCycle: "h23",
+          }).format(creationDateTime)
+        : null);
 
     try {
       if (project) {
@@ -157,8 +173,8 @@ class TaskService {
         user: auth,
         taskName: taskName.trim(),
         description: typeof description === "string" ? description.trim() : "",
-        dueDate: dueDate || null,
-        dueTime: normalizeDueTime(dueTime),
+        dueDate: taskDueDate,
+        dueTime: taskDueTime,
         priority: priority || "medium",
         ...completionState,
         checklist: normalizedChecklist,

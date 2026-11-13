@@ -111,7 +111,7 @@ class NotificationService {
         $setOnInsert: { user: userId },
       },
       {
-        new: true,
+        returnDocument: "after",
         upsert: true,
         setDefaultsOnInsert: true,
       },
@@ -184,7 +184,7 @@ class NotificationService {
         },
       },
       {
-        new: true,
+        returnDocument: "after",
         upsert: true,
         runValidators: true,
         setDefaultsOnInsert: true,
@@ -205,7 +205,7 @@ class NotificationService {
     const notification = await UserNotification.findOneAndUpdate(
       { _id: notificationId, user: userId },
       { $set: { readAt: new Date() } },
-      { new: true, runValidators: true },
+      { returnDocument: "after", runValidators: true },
     ).select("_id readAt");
 
     if (!notification) {
@@ -305,7 +305,7 @@ class NotificationService {
         },
       },
       {
-        new: true,
+        returnDocument: "after",
         upsert: true,
         runValidators: true,
         setDefaultsOnInsert: true,

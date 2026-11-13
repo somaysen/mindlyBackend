@@ -3,6 +3,7 @@ import logger from "../utils/logger.js";
 import Project from "../models/project.model.js";
 import FileModel from "../models/file.model.js";
 import TaskModel from "../models/task.model.js";
+import UserNotification from "../models/userNotification.model.js";
 import Idea from "../models/idea.model.js";
 import canvasService from "./canvas.service.js";
 import { deleteFile as deleteCloudinaryFile } from "../config/fileStore.js";
@@ -119,9 +120,16 @@ class ProjectService {
       const files = await FileModel.find({ userId, projectId })
         .select("cloudinaryPublicId cloudinaryResourceType")
         .lean();
+      const taskIds = await TaskModel.find({ user: userId, project: projectId })
+        .distinct("_id");
       await Promise.all([
         FileModel.deleteMany({ userId, projectId }),
         TaskModel.deleteMany({ user: userId, project: projectId }),
+        UserNotification.deleteMany({
+          user: userId,
+          task: { $in: taskIds },
+          type: "task_reminder",
+        }),
         Idea.updateMany({ user: userId, project: projectId }, { $set: { project: null } }),
         canvasService.deleteForProject(projectId),
       ]);
