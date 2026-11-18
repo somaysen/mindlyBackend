@@ -78,13 +78,15 @@ app.use((req, res, next) => {
   const usesCookieAuth = req.cookies?.accessToken || req.cookies?.refreshToken;
   const origin = req.get("origin");
 
-  if (
-    isMutation &&
-    usesCookieAuth &&
-    origin &&
-    !isAllowedOrigin(origin)
-  ) {
-    return next(new AppError("Request origin is not allowed", 403));
+  if (isMutation && usesCookieAuth) {
+    if (!origin && config.NODE_ENV === "production") {
+      return next(
+        new AppError("Request origin is required for cookie-authenticated requests", 403),
+      );
+    }
+    if (origin && !isAllowedOrigin(origin)) {
+      return next(new AppError("Request origin is not allowed", 403));
+    }
   }
 
   return next();

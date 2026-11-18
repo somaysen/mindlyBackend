@@ -94,7 +94,7 @@ class GoogleService {
           user = await Auth.create({
             name:
               typeof payload.name === "string"
-                ? payload.name.slice(0, 120)
+                ? payload.name.slice(0, 60)
                 : email.split("@")[0],
             email,
             googleId,
@@ -124,7 +124,7 @@ class GoogleService {
 
     user.lastLoginAt = new Date();
     if (!user.name && typeof payload.name === "string") {
-      user.name = payload.name.slice(0, 120);
+      user.name = payload.name.slice(0, 60);
     }
     await user.save();
 

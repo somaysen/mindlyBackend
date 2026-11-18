@@ -28,7 +28,7 @@ class CanvasController {
     try {
       const canvases = await canvasService.listForUser(
         this.getUserId(req),
-        req.query.projectId,
+        req.validatedQuery?.projectId,
       );
       return this.respond(res, canvases);
     } catch (error) {

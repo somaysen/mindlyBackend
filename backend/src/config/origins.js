@@ -28,7 +28,7 @@ export function isAllowedOrigin(origin) {
 
   if (
     config.NODE_ENV !== "production" &&
-    /^http:\/\/localhost(?::\d+)?$/.test(normalizedOrigin)
+    /^http:\/\/(?:localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/.test(normalizedOrigin)
   ) {
     return true;
   }

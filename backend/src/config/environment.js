@@ -47,6 +47,9 @@ const config = {
 
 export function validateConfig() {
   const errors = [];
+  const isPlaceholderSecret = (value) =>
+    /^(?:replace|change|your|example|default)[-_ ]/i.test(value?.trim() || "") ||
+    /^(?:secret|password|changeme)$/i.test(value?.trim() || "");
   const cloudinaryCredentials = [
     config.CLOUDINARY_CLOUD_NAME,
     config.CLOUDINARY_API_KEY,
@@ -99,17 +102,29 @@ export function validateConfig() {
   }
 
   if (config.NODE_ENV === "production") {
-    if (!config.AUTH_TOKEN_SECRET || config.AUTH_TOKEN_SECRET.length < 32) {
-      errors.push("AUTH_TOKEN_SECRET must contain at least 32 characters in production");
+    if (
+      !config.AUTH_TOKEN_SECRET ||
+      config.AUTH_TOKEN_SECRET.length < 32 ||
+      isPlaceholderSecret(config.AUTH_TOKEN_SECRET)
+    ) {
+      errors.push("AUTH_TOKEN_SECRET must be a non-placeholder secret with at least 32 characters in production");
     }
-    if (!config.JWT_REFRESH_SECRET || config.JWT_REFRESH_SECRET.length < 32) {
-      errors.push("JWT_REFRESH_SECRET must contain at least 32 characters in production");
+    if (
+      !config.JWT_REFRESH_SECRET ||
+      config.JWT_REFRESH_SECRET.length < 32 ||
+      isPlaceholderSecret(config.JWT_REFRESH_SECRET)
+    ) {
+      errors.push("JWT_REFRESH_SECRET must be a non-placeholder secret with at least 32 characters in production");
     }
     if (config.AUTH_TOKEN_SECRET && config.AUTH_TOKEN_SECRET === config.JWT_REFRESH_SECRET) {
       errors.push("Access and refresh token secrets must be different");
     }
-    if (!config.SYNC_TICKET_SECRET || config.SYNC_TICKET_SECRET.length < 32) {
-      errors.push("SYNC_TICKET_SECRET must contain at least 32 characters in production");
+    if (
+      !config.SYNC_TICKET_SECRET ||
+      config.SYNC_TICKET_SECRET.length < 32 ||
+      isPlaceholderSecret(config.SYNC_TICKET_SECRET)
+    ) {
+      errors.push("SYNC_TICKET_SECRET must be a non-placeholder secret with at least 32 characters in production");
     }
     if (
       config.SYNC_TICKET_SECRET &&

@@ -26,7 +26,7 @@ const notificationMiddleware = async (req, _res, next) => {
     }
 
     const query = { user: userId };
-    if (req.query.includeScheduled !== "true") {
+    if (req.validatedQuery?.includeScheduled !== "true") {
       query.scheduledFor = { $lte: new Date() };
     }
 

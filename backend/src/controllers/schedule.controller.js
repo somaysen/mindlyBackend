@@ -11,7 +11,7 @@ class ScheduleController {
         throw new AppError("Unauthorized", 401);
       }
 
-      const date = req.query.date;
+      const date = req.validatedQuery?.date;
 
       const schedule = await scheduleService.getDailySchedule(
         userId,

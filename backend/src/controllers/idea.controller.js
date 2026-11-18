@@ -21,7 +21,7 @@ class IdeaController {
       const userId = getAuthId(req);
       if (!userId) throw new AppError("Unauthorized", 401);
 
-      const data = await ideaService.getIdeas(userId, { project: req.query.project });
+      const data = await ideaService.getIdeas(userId, { project: req.validatedQuery?.project });
       return res.status(200).json({ success: true, data });
     } catch (error) {
       next(error);

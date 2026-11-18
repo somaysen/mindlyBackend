@@ -74,7 +74,7 @@ class TaskController {
 
       const data = await taskService.getTasksCreatedToday({
         user: authId,
-        timezone: req.query.timezone,
+        timezone: req.validatedQuery?.timezone,
       });
       return res.status(200).json({ success: true, data });
     } catch (error) {
